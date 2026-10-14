@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { GameOptions } from './game/config';
-import { loadLastResult, loadOptions, type StoredMatchResult } from './storage/localStore';
+import { loadHistory, loadLastResult, loadOptions, type StoredMatchResult } from './storage/localStore';
+import { LogScreen, type LogTab } from './ui/screens/LogScreen';
 import { MainMenu } from './ui/screens/MainMenu';
 import { OptionsScreen } from './ui/screens/OptionsScreen';
 import { GameScreen } from './ui/screens/GameScreen';
@@ -9,6 +10,7 @@ import { ResultScreen } from './ui/screens/ResultScreen';
 type Screen =
   | { name: 'menu' }
   | { name: 'options' }
+  | { name: 'log'; tab: LogTab }
   | { name: 'game'; runId: number }
   | { name: 'result'; result: StoredMatchResult };   
 export default function App() {
@@ -26,6 +28,8 @@ export default function App() {
   switch (screen.name) {
     case 'options':
       return <OptionsScreen initial={options} onSaved={setOptions} onBack={toMenu} />;
+    case 'log':
+      return <LogScreen initialTab={screen.tab} options={options} history={loadHistory()} onBack={toMenu} />;
     case 'game':
       return <GameScreen key={screen.runId} options={options} onExit={toMenu} onFinished={finished} />;
     case 'result':
@@ -36,6 +40,7 @@ export default function App() {
           lastResult={lastResult}
           onPlay={play}
           onOptions={() => setScreen({ name: 'options' })}
+          onOpenLog={(tab) => setScreen({ name: 'log', tab })}
           onViewResult={() => lastResult && setScreen({ name: 'result', result: lastResult })}
         />
       );

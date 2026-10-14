@@ -41,8 +41,7 @@ export function loadOptions(): GameOptions {
 
 export const saveOptions = (o: GameOptions): boolean => write(OPTIONS_KEY, o);
 
-export function loadLastResult(): StoredMatchResult | null {
-  const v = read(LAST_RESULT_KEY);
+export function parseStoredResult(v: unknown): StoredMatchResult | null {
   if (
     isObj(v) && typeof v.matchId === 'string' && typeof v.endedAt === 'string' &&
     typeof v.score === 'number' && typeof v.playedSec === 'number' &&
@@ -54,4 +53,26 @@ export function loadLastResult(): StoredMatchResult | null {
   return null;
 }
 
+export const loadLastResult = (): StoredMatchResult | null => parseStoredResult(read(LAST_RESULT_KEY));
+
 export const saveLastResult = (r: StoredMatchResult): boolean => write(LAST_RESULT_KEY, r);
+
+// ---- match history (local for now; swapped for the REST/TanStack Query source later) ----
+const HISTORY_KEY = 'pirate-battle:history:v1';
+const HISTORY_LIMIT = 200;
+
+/** Finished matches, newest first. Corrupted entries are dropped instead of crashing the screen. */
+export function loadHistory(): StoredMatchResult[] {
+  const v = read(HISTORY_KEY);
+  if (!Array.isArray(v)) return [];
+  return v
+    .map(parseStoredResult)
+    .filter((r): r is StoredMatchResult => r !== null)
+    .sort((a, b) => b.endedAt.localeCompare(a.endedAt));
+}
+
+/** Idempotent by matchId: saving the same match twice keeps a single entry. */
+export function appendHistory(r: StoredMatchResult): boolean {
+  const rest = loadHistory().filter((h) => h.matchId !== r.matchId);
+  return write(HISTORY_KEY, [r, ...rest].slice(0, HISTORY_LIMIT));
+}

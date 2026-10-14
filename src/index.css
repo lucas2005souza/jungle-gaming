@@ -85,3 +85,81 @@ progress { width: min(320px, 70vw); height: 16px; }
 @media (orientation: portrait) and (pointer: coarse) {
   .rotate-hint { display: flex; position: absolute; inset: 0; z-index: 30; align-items: center; justify-content: center; background: rgba(5,30,44,.95); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
 }
+/* ======================================================================
+   Pirate Battle theme: wooden 9-slice frames, gold / dark plank buttons.
+   Sprites come from the provided UI atlas (retina PNGs, 2x => slices doubled).
+   ====================================================================== */
+:root {
+  --cream: #fff1c9;
+  --coin: #ffd98a;
+  --navy: #14202f;
+  --frame: clamp(34px, 4vw, 54px);
+  --ui-font: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+}
+
+.scene { position: relative; min-height: 100dvh; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: url('/assets/ui_scene_background.png') center / cover no-repeat; font-family: var(--ui-font); }
+.brand { position: fixed; right: max(16px, 3vw); bottom: max(10px, 2vh); height: clamp(26px, 4.5vh, 46px); width: auto; pointer-events: none; }
+
+.wood-panel { box-sizing: border-box; width: 100%; max-height: calc(100dvh - 24px); overflow: auto; border: var(--frame) solid transparent; border-image: url('/assets/png/retina/ui/menu/panel_menu.png') 108 fill / var(--frame) stretch; display: flex; flex-direction: column; align-items: center; color: var(--text); }
+.menu-panel { max-width: 620px; padding: 0 clamp(8px, 3vw, 28px) 4px; gap: 12px; }
+.log-panel { max-width: 1140px; padding: 0 clamp(8px, 2vw, 24px) 4px; gap: 10px; }
+
+/* title + copy */
+.menu-title { margin: 0; line-height: 0; }
+.menu-title img { width: min(400px, 78%); height: auto; }
+.eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: #e9dcb8; text-align: center; }
+.tagline { margin: 0; font-size: 12px; font-weight: 700; color: #e9dcb8; text-align: center; }
+.menu-actions { display: flex; flex-direction: column; gap: 14px; align-items: center; margin: 4px 0; }
+.menu-ship { height: 56px; width: auto; }
+.menu-links { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.link-btn { font: inherit; font-size: 13px; font-weight: 700; color: var(--coin); background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 4px 8px; min-height: 32px; }
+
+.controls-details { width: 100%; font-size: 13px; color: var(--muted); }
+.controls-details summary { cursor: pointer; text-align: center; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; padding: 6px; }
+.controls-details table.controls { margin-top: 6px; }
+
+/* plank buttons */
+.wood-btn { --bx: 38px; --by: 28px; box-sizing: border-box; border: solid transparent; border-width: var(--by) var(--bx); height: calc(var(--by) * 2 + 8px); padding: 0; margin: 0; background: none; display: inline-grid; place-items: center; white-space: nowrap; cursor: pointer; font: 800 21px/1 var(--ui-font); letter-spacing: .04em; text-transform: uppercase; }
+.wood-btn.big { min-width: min(264px, 72vw); }
+.wood-btn.small { --bx: 30px; --by: 21px; height: calc(var(--by) * 2 + 6px); min-width: 164px; font-size: 14px; }
+.wood-btn.primary { color: #3a2a0d; border-image: url('/assets/png/retina/ui/menu/button_primary_normal.png') 70 90 fill / var(--by) var(--bx) stretch; }
+.wood-btn.primary:hover { border-image-source: url('/assets/png/retina/ui/menu/button_primary_hover.png'); }
+.wood-btn.primary:active { border-image-source: url('/assets/png/retina/ui/menu/button_primary_pressed.png'); }
+.wood-btn.primary:disabled { border-image-source: url('/assets/png/retina/ui/menu/button_primary_disabled.png'); cursor: not-allowed; }
+.wood-btn.secondary { color: var(--cream); border-image: url('/assets/png/retina/ui/menu/button_secondary_normal.png') 70 90 fill / var(--by) var(--bx) stretch; }
+.wood-btn.secondary:hover { filter: brightness(1.18); }
+.wood-btn.secondary:active { border-image-source: url('/assets/png/retina/ui/menu/button_secondary_pressed.png'); }
+
+.round-btn { width: 44px; height: 44px; padding: 0; border: 0; display: grid; place-items: center; cursor: pointer; background: url('/assets/png/retina/ui/controls/button_round_normal.png') center / contain no-repeat; }
+.round-btn img { width: 24px; height: 24px; }
+.round-btn:hover:not(:disabled) { background-image: url('/assets/png/retina/ui/controls/button_round_hover.png'); }
+.round-btn:active:not(:disabled) { background-image: url('/assets/png/retina/ui/controls/button_round_pressed.png'); }
+.round-btn:disabled { opacity: .45; cursor: default; filter: grayscale(.4); }
+
+/* Captain's Log */
+.log-title { margin: 0; font-size: clamp(26px, 4vw, 34px); font-weight: 900; text-transform: uppercase; color: var(--cream); letter-spacing: .02em; text-shadow: 0 2px 0 #6a3f10, 0 0 3px #2b1805, 2px 2px 0 #2b1805, -2px 2px 0 #2b1805; }
+.log-tabs { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.log-sub { margin: 4px 0 6px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #cfd9e3; }
+.log-table-wrap { width: 100%; overflow-x: auto; min-height: 262px; }
+.log-table { width: 100%; min-width: 520px; border-collapse: separate; border-spacing: 0 6px; table-layout: fixed; }
+.log-table th { text-align: left; padding: 4px 12px; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #a9b7c6; }
+.log-table td { padding: 0 12px; height: 40px; background: rgba(12, 24, 38, .88); font-size: 14px; font-weight: 700; color: #f3f6fa; }
+.log-table td:first-child { border-radius: 8px 0 0 8px; }
+.log-table td:last-child { border-radius: 0 8px 8px 0; }
+.log-table tr.latest td { background: rgba(120, 104, 56, .55); border-top: 1px solid rgba(255, 217, 138, .35); border-bottom: 1px solid rgba(255, 217, 138, .35); }
+.log-table .muted { color: #a9b7c6; font-size: 12px; font-weight: 600; }
+.log-table .points { color: var(--coin); font-weight: 800; }
+.log-table .result { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.log-table .result.win { color: #b6e3a0; }
+.log-table .result.loss { color: #ffb4b4; }
+.log-empty { margin: 28px 0; text-align: center; color: #cfd9e3; font-size: 14px; }
+
+.pager { display: flex; align-items: center; gap: 14px; }
+.pager-label { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #cfd9e3; min-width: 96px; text-align: center; }
+
+@media (max-height: 560px) {
+  .menu-ship, .menu-panel .tagline { display: none; }
+  .menu-title img { width: min(300px, 60%); }
+  .wood-btn.big { --by: 22px; --bx: 30px; font-size: 18px; }
+  .log-table-wrap { min-height: 0; }
+}
