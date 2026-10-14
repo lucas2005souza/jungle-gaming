@@ -45,6 +45,8 @@ export class KeyboardInput {
     }
     const action = KEY_MAP[e.code];
     if (!action) return;
+    // Let dialogs and form controls keep Space/arrows (e.g. activating a focused button).
+    if ((e.target as HTMLElement | null)?.closest?.('[role="dialog"], input, select, textarea')) return;
     e.preventDefault();
     this.mux.set('keyboard', { [action]: true });
   };
