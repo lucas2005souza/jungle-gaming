@@ -1,122 +1,386 @@
-/** Central, typed gameplay configuration. Balance changes never require touching system logic. */
+import type { GameConfig, ShipStats, WeaponStats } from './config';
+import {
+  circlesOverlap, clamp, createRng, forwardX, forwardY, headingTo, normalizeAngle,
+  segmentHitsCircle, turnToward,
+} from './math';
+import {
+  emptyInput, type EndReason, type GameEvent, type InputState, type MatchResult,
+  type MatchStatus, type Projectile, type Ship, type ShipKind,
+} from './types';
 
-export interface ShipStats {
-  maxHp: number;
-  /** pixels / second */
-  speed: number;
-  /** radians / second */
-  turnRate: number;
-  /** collision radius in pixels */
-  radius: number;
-}
+export const FIXED_STEP = 1 / 60;
+const MAX_STEPS_PER_FRAME = 5;
 
-export interface WeaponStats {
-  damage: number;
-  /** pixels / second */
-  projectileSpeed: number;
-  /** seconds */
-  projectileLife: number;
-  /** seconds between shots */
-  cooldown: number;
-  projectileRadius: number;
-}
+export type EventListener = (e: GameEvent) => void;
 
-export interface IslandDef {
-  id: string;
-  x: number;
-  y: number;
-  radius: number;
-}
+/**
+ * Pure game rules. No PixiJS, no React, no DOM, no wall-clock.
+ * Time only advances through `advance()` / `step()`, so pause is exact and tests are deterministic.
+ */
+export class Simulation {
+  readonly config: GameConfig;
+  readonly player: Ship;
+  readonly enemies: Ship[] = [];
+  readonly projectiles: Projectile[] = [];
+  readonly input: InputState = emptyInput();
 
-export interface GameConfig {
-  seed: number;
-  arena: { width: number; height: number };
-  match: {
-    durationSec: number;
-    spawnIntervalSec: number;
-    maxEnemies: number;
-    spawnMinDistanceFromPlayer: number;
-    spawnEdgeMargin: number;
-    spawnWeights: { chaser: number; shooter: number };
-  };
-  player: {
-    ship: ShipStats;
-    front: WeaponStats;
-    side: WeaponStats & { count: number; spacing: number };
-  };
-  chaser: { ship: ShipStats; contactDamage: number };
-  shooter: {
-    ship: ShipStats;
-    weapon: WeaponStats;
-    attackRange: number;
-    /** Stops advancing once closer than this. */
-    keepDistance: number;
-    aimToleranceRad: number;
-  };
-  islands: IslandDef[];
-}
+  status: MatchStatus = 'running';
+  endReason: EndReason | null = null;
+  score = 0;
+  /** active (unpaused) simulated seconds */
+  elapsed = 0;
 
-/** Player-editable options (Options screen). */
-export interface GameOptions {
-  durationSec: number;
-  spawnIntervalSec: number;
-}
+  private rng: () => number;
+  private nextId = 1;
+  private accumulator = 0;
+  private spawnTimer: number;
+  private spawnCount = 0;
+  private listeners = new Set<EventListener>();
 
-export const OPTION_LIMITS = {
-  durationSec: { min: 60, max: 180, step: 5 },
-  spawnIntervalSec: { min: 0.5, max: 10, step: 0.5 },
-} as const;
+  constructor(config: GameConfig) {
+    this.config = config;
+    this.rng = createRng(config.seed);
+    this.spawnTimer = config.match.spawnIntervalSec;
+    const { width, height } = config.arena;
+    this.player = this.makeShip('player', width * 0.2, height * 0.8, 0, config.player.ship);
+  }
 
-export const DEFAULT_OPTIONS: GameOptions = { durationSec: 90, spawnIntervalSec: 2.5 };
+  // ---- public API ---------------------------------------------------------
 
-export type OptionErrors = Partial<Record<keyof GameOptions, string>>;
+  on(l: EventListener): () => void {
+    this.listeners.add(l);
+    return () => this.listeners.delete(l);
+  }
 
-export function validateOptions(o: GameOptions): OptionErrors {
-  const e: OptionErrors = {};
-  const d = OPTION_LIMITS.durationSec;
-  const s = OPTION_LIMITS.spawnIntervalSec;
-  if (!Number.isFinite(o.durationSec) || o.durationSec < d.min || o.durationSec > d.max)
-    e.durationSec = `Game session time must be between ${d.min} and ${d.max} seconds.`;
-  if (!Number.isFinite(o.spawnIntervalSec) || o.spawnIntervalSec < s.min || o.spawnIntervalSec > s.max)
-    e.spawnIntervalSec = `Enemy spawn time must be between ${s.min} and ${s.max} seconds.`;
-  return e;
-}
+  /** Feed real frame time (seconds). Runs 0..N fixed steps; frame-rate independent. */
+  advance(frameDt: number): void {
+    if (this.status !== 'running') return;
+    this.accumulator += clamp(frameDt, 0, 0.25);
+    let steps = 0;
+    while (this.accumulator >= FIXED_STEP && steps < MAX_STEPS_PER_FRAME && this.status === 'running') {
+      this.step(FIXED_STEP);
+      this.accumulator -= FIXED_STEP;
+      steps++;
+    }
+    if (steps === MAX_STEPS_PER_FRAME) this.accumulator = 0; // drop backlog (spiral of death)
+  }
 
-export const BASE_CONFIG: GameConfig = {
-  seed: 1,
-  arena: { width: 1280, height: 720 },
-  match: {
-    durationSec: DEFAULT_OPTIONS.durationSec,
-    spawnIntervalSec: DEFAULT_OPTIONS.spawnIntervalSec,
-    maxEnemies: 12,
-    spawnMinDistanceFromPlayer: 360,
-    spawnEdgeMargin: 60,
-    spawnWeights: { chaser: 0.5, shooter: 0.5 },
-  },
-  player: {
-    ship: { maxHp: 100, speed: 190, turnRate: 2.2, radius: 26 },
-    front: { damage: 12, projectileSpeed: 620, projectileLife: 1.1, cooldown: 0.28, projectileRadius: 5 },
-    side: { damage: 8, projectileSpeed: 560, projectileLife: 0.9, cooldown: 0.9, projectileRadius: 5, count: 3, spacing: 22 },
-  },
-  chaser: { ship: { maxHp: 30, speed: 130, turnRate: 1.9, radius: 22 }, contactDamage: 25 },
-  shooter: {
-    ship: { maxHp: 45, speed: 90, turnRate: 1.5, radius: 24 },
-    weapon: { damage: 8, projectileSpeed: 380, projectileLife: 1.6, cooldown: 1.6, projectileRadius: 5 },
-    attackRange: 420,
-    keepDistance: 280,
-    aimToleranceRad: 0.2,
-  },
-  islands: [
-    { id: 'i1', x: 400, y: 360, radius: 90 },
-    { id: 'i2', x: 900, y: 210, radius: 70 },
-    { id: 'i3', x: 960, y: 530, radius: 85 },
-  ],
-};
+  pause(): void {
+    if (this.status === 'running') this.status = 'paused';
+  }
 
-export function createConfig(options: GameOptions, seed = Date.now() >>> 0): GameConfig {
-  const cfg = structuredClone(BASE_CONFIG); // snapshot: later option edits never affect a running match
-  cfg.seed = seed;
-  cfg.match.durationSec = options.durationSec;
-  cfg.match.spawnIntervalSec = options.spawnIntervalSec;
-  return cfg;
+  /** Resume discards buffered time and held keys so nothing from the paused period is replayed. */
+  resume(): void {
+    if (this.status !== 'paused') return;
+    this.accumulator = 0;
+    Object.assign(this.input, emptyInput());
+    this.status = 'running';
+  }
+
+  setInput(patch: Partial<InputState>): void {
+    if (this.status !== 'running') return;
+    Object.assign(this.input, patch);
+  }
+
+  get timeLeft(): number {
+    return Math.max(0, this.config.match.durationSec - this.elapsed);
+  }
+
+  getResult(): MatchResult | null {
+    if (this.status !== 'ended' || !this.endReason) return null;
+    const { durationSec, spawnIntervalSec } = this.config.match;
+    return {
+      score: this.score,
+      playedSec: Math.min(this.elapsed, durationSec),
+      reason: this.endReason,
+      config: { durationSec, spawnIntervalSec },
+    };
+  }
+
+  /** One deterministic fixed step. */
+  step(dt: number): void {
+    if (this.status !== 'running') return;
+    this.elapsed += dt;
+    this.updatePlayer(dt);
+    this.updateEnemies(dt);
+    this.updateProjectiles(dt);
+    this.resolveShipCollisions();
+    this.updateSpawns(dt);
+    this.compactDead();
+    this.checkEnd();
+  }
+
+  // ---- ships ----------------------------------------------------------------
+
+  private makeShip(kind: ShipKind, x: number, y: number, heading: number, s: ShipStats): Ship {
+    return {
+      id: this.nextId++, kind, x, y, heading, hp: s.maxHp, maxHp: s.maxHp,
+      radius: s.radius, alive: true, cooldowns: { front: 0, left: 0, right: 0 },
+    };
+  }
+
+  /** Move with island sliding + arena clamp. Ships can never end a step inside an island. */
+  private moveShip(ship: Ship, dx: number, dy: number): boolean {
+    ship.x += dx;
+    ship.y += dy;
+    let blocked = false;
+    for (const isl of this.config.islands) {
+      const ox = ship.x - isl.x, oy = ship.y - isl.y;
+      const min = isl.radius + ship.radius;
+      const d2 = ox * ox + oy * oy;
+      if (d2 < min * min) {
+        const d = Math.sqrt(d2) || 0.0001;
+        ship.x = isl.x + (ox / d) * min;
+        ship.y = isl.y + (oy / d) * min;
+        blocked = true;
+      }
+    }
+    const { width, height } = this.config.arena;
+    const cx = clamp(ship.x, ship.radius, width - ship.radius);
+    const cy = clamp(ship.y, ship.radius, height - ship.radius);
+    if (cx !== ship.x || cy !== ship.y) blocked = true;
+    ship.x = cx;
+    ship.y = cy;
+    return blocked;
+  }
+
+  private tickCooldowns(ship: Ship, dt: number): void {
+    const c = ship.cooldowns;
+    c.front = Math.max(0, c.front - dt);
+    c.left = Math.max(0, c.left - dt);
+    c.right = Math.max(0, c.right - dt);
+  }
+
+  private updatePlayer(dt: number): void {
+    const p = this.player;
+    const cfg = this.config.player;
+    this.tickCooldowns(p, dt);
+    const turn = (this.input.turnRight ? 1 : 0) - (this.input.turnLeft ? 1 : 0);
+    p.heading = normalizeAngle(p.heading + turn * cfg.ship.turnRate * dt);
+    if (this.input.forward) {
+      const v = cfg.ship.speed * dt;
+      this.moveShip(p, forwardX(p.heading) * v, forwardY(p.heading) * v);
+    }
+    if (this.input.fireFront && p.cooldowns.front <= 0) {
+      p.cooldowns.front = cfg.front.cooldown;
+      this.fireProjectile(p, 'player', cfg.front, p.heading, 0, p.radius);
+      this.emit({ type: 'shot', weapon: 'front', shipId: p.id, x: p.x, y: p.y, heading: p.heading });
+    }
+    if (this.input.fireLeft && p.cooldowns.left <= 0) {
+      p.cooldowns.left = cfg.side.cooldown;
+      this.fireBroadside(p, -1);
+    }
+    if (this.input.fireRight && p.cooldowns.right <= 0) {
+      p.cooldowns.right = cfg.side.cooldown;
+      this.fireBroadside(p, 1);
+    }
+  }
+
+  /** Three parallel projectiles, spaced along the hull. side: -1 = port, +1 = starboard. */
+  private fireBroadside(p: Ship, side: -1 | 1): void {
+    const w = this.config.player.side;
+    const dir = p.heading + side * (Math.PI / 2);
+    for (let i = 0; i < w.count; i++) {
+      const along = (i - (w.count - 1) / 2) * w.spacing;
+      this.fireProjectile(p, 'player', w, dir, along, p.radius * 0.8);
+    }
+    this.emit({ type: 'shot', weapon: 'side', shipId: p.id, x: p.x, y: p.y, heading: dir });
+  }
+
+  private fireProjectile(
+    ship: Ship, owner: 'player' | 'enemy', w: WeaponStats,
+    dir: number, alongHull: number, muzzleOffset: number,
+  ): void {
+    const fx = forwardX(ship.heading), fy = forwardY(ship.heading);
+    const dx = forwardX(dir), dy = forwardY(dir);
+    const x = ship.x + fx * alongHull + dx * muzzleOffset;
+    const y = ship.y + fy * alongHull + dy * muzzleOffset;
+    this.projectiles.push({
+      id: this.nextId++, owner, x, y, prevX: x, prevY: y,
+      vx: dx * w.projectileSpeed, vy: dy * w.projectileSpeed,
+      damage: w.damage, radius: w.projectileRadius, life: w.projectileLife, alive: true,
+    });
+  }
+
+  // ---- enemies --------------------------------------------------------------
+
+  private updateEnemies(dt: number): void {
+    const p = this.player;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      this.tickCooldowns(e, dt);
+      const stats = e.kind === 'chaser' ? this.config.chaser.ship : this.config.shooter.ship;
+      const dx = p.x - e.x, dy = p.y - e.y;
+      const dist = Math.hypot(dx, dy);
+      let desired = headingTo(dx, dy);
+      desired = this.avoidIslands(e, desired, stats.speed);
+      e.heading = turnToward(e.heading, desired, stats.turnRate * dt);
+
+      let advance = true;
+      if (e.kind === 'shooter') {
+        const sh = this.config.shooter;
+        advance = dist > sh.keepDistance;
+        const aimErr = Math.abs(normalizeAngle(headingTo(dx, dy) - e.heading));
+        if (dist <= sh.attackRange && aimErr <= sh.aimToleranceRad && e.cooldowns.front <= 0) {
+          e.cooldowns.front = sh.weapon.cooldown;
+          this.fireProjectile(e, 'enemy', sh.weapon, e.heading, 0, e.radius);
+          this.emit({ type: 'shot', weapon: 'front', shipId: e.id, x: e.x, y: e.y, heading: e.heading });
+        }
+      }
+      if (advance) {
+        const v = stats.speed * dt;
+        this.moveShip(e, forwardX(e.heading) * v, forwardY(e.heading) * v);
+      }
+    }
+  }
+
+  /** Whisker steering: if the bow points into an island, bend the desired heading around it. */
+  private avoidIslands(e: Ship, desired: number, speed: number): number {
+    const look = speed * 0.9 + e.radius;
+    const fx = forwardX(desired), fy = forwardY(desired);
+    for (const isl of this.config.islands) {
+      const margin = isl.radius + e.radius + 14;
+      const rx = isl.x - e.x, ry = isl.y - e.y;
+      const proj = rx * fx + ry * fy;
+      if (proj < 0 || proj > look + isl.radius) continue;
+      const lateral = rx * fy - ry * fx; // >0: island on the right of the desired line
+      if (Math.abs(lateral) < margin) {
+        const away = lateral > 0 ? -1 : 1;
+        return normalizeAngle(desired + away * Math.PI * 0.45);
+      }
+    }
+    return desired;
+  }
+
+  // ---- projectiles & collisions ---------------------------------------------
+
+  private updateProjectiles(dt: number): void {
+    const { width, height } = this.config.arena;
+    for (const pr of this.projectiles) {
+      if (!pr.alive) continue;
+      pr.prevX = pr.x;
+      pr.prevY = pr.y;
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+      pr.life -= dt;
+      if (pr.life <= 0 || pr.x < 0 || pr.y < 0 || pr.x > width || pr.y > height) {
+        pr.alive = false;
+        continue;
+      }
+      if (this.config.islands.some(i => segmentHitsCircle(pr.prevX, pr.prevY, pr.x, pr.y, pr.radius, i))) {
+        pr.alive = false;
+        this.emit({ type: 'blocked', x: pr.x, y: pr.y });
+        continue;
+      }
+      if (pr.owner === 'player') {
+        for (const e of this.enemies) {
+          if (e.alive && segmentHitsCircle(pr.prevX, pr.prevY, pr.x, pr.y, pr.radius, e)) {
+            pr.alive = false; // single-hit: removed immediately
+            this.damageShip(e, pr.damage, true, pr.x, pr.y);
+            break;
+          }
+        }
+      } else if (this.player.alive && segmentHitsCircle(pr.prevX, pr.prevY, pr.x, pr.y, pr.radius, this.player)) {
+        pr.alive = false;
+        this.damageShip(this.player, pr.damage, false, pr.x, pr.y);
+      }
+    }
+  }
+
+  private resolveShipCollisions(): void {
+    if (!this.player.alive) return;
+    for (const e of this.enemies) {
+      if (e.alive && e.kind === 'chaser' && circlesOverlap(e, this.player)) {
+        this.emit({ type: 'playerCollision', x: e.x, y: e.y });
+        this.damageShip(this.player, this.config.chaser.contactDamage, false, e.x, e.y);
+        // Self-destruct: removed from play, never scores.
+        e.alive = false;
+        e.hp = 0;
+        this.emit({ type: 'shipDestroyed', shipId: e.id, kind: e.kind, x: e.x, y: e.y, byPlayer: false });
+      }
+    }
+  }
+
+  private damageShip(ship: Ship, amount: number, byPlayer: boolean, x: number, y: number): void {
+    if (!ship.alive) return;
+    ship.hp = Math.max(0, ship.hp - amount);
+    this.emit({ type: 'hit', targetId: ship.id, x, y, damage: amount });
+    if (ship.hp <= 0) {
+      ship.alive = false;
+      if (ship.kind !== 'player' && byPlayer) this.score += 1;
+      this.emit({ type: 'shipDestroyed', shipId: ship.id, kind: ship.kind, x: ship.x, y: ship.y, byPlayer });
+    }
+  }
+
+  // ---- spawning ---------------------------------------------------------------
+
+  private updateSpawns(dt: number): void {
+    this.spawnTimer -= dt;
+    while (this.spawnTimer <= 0) {
+      this.spawnTimer += this.config.match.spawnIntervalSec;
+      if (this.enemies.filter(e => e.alive).length < this.config.match.maxEnemies) this.trySpawn();
+    }
+  }
+
+  private pickKind(): ShipKind {
+    // Guarantee both types appear early in a default match, then follow the weights.
+    if (this.spawnCount === 0) return 'chaser';
+    if (this.spawnCount === 1) return 'shooter';
+    const { chaser, shooter } = this.config.match.spawnWeights;
+    return this.rng() * (chaser + shooter) < chaser ? 'chaser' : 'shooter';
+  }
+
+  private trySpawn(): void {
+    const { width, height } = this.config.arena;
+    const m = this.config.match;
+    const kind = this.pickKind();
+    const stats = kind === 'chaser' ? this.config.chaser.ship : this.config.shooter.ship;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const x = m.spawnEdgeMargin + this.rng() * (width - 2 * m.spawnEdgeMargin);
+      const y = m.spawnEdgeMargin + this.rng() * (height - 2 * m.spawnEdgeMargin);
+      const probe = { x, y, radius: stats.radius + 20 };
+      if (this.config.islands.some(i => circlesOverlap(probe, i))) continue;
+      if (Math.hypot(x - this.player.x, y - this.player.y) < m.spawnMinDistanceFromPlayer) continue;
+      if (this.enemies.some(e => e.alive && circlesOverlap(probe, e))) continue;
+      const ship = this.makeShip(kind, x, y, headingTo(this.player.x - x, this.player.y - y), stats);
+      // Spawn grace for shooters: they must reload before the first shot.
+      if (kind === 'shooter') ship.cooldowns.front = this.config.shooter.weapon.cooldown;
+      this.enemies.push(ship);
+      this.spawnCount++;
+      this.emit({ type: 'enemySpawned', shipId: ship.id, kind });
+      return;
+    }
+    // No valid spot this tick: skip; the next interval retries (never spawn unsafely).
+  }
+
+  // ---- housekeeping -------------------------------------------------------------
+
+  private compactDead(): void {
+    for (let i = this.enemies.length - 1; i >= 0; i--) if (!this.enemies[i].alive) this.enemies.splice(i, 1);
+    for (let i = this.projectiles.length - 1; i >= 0; i--) if (!this.projectiles[i].alive) this.projectiles.splice(i, 1);
+  }
+
+  private checkEnd(): void {
+    if (!this.player.alive) this.finish('player_destroyed');
+    else if (this.elapsed >= this.config.match.durationSec) this.finish('time_up');
+  }
+
+  private finish(reason: EndReason): void {
+    this.status = 'ended';
+    this.endReason = reason;
+    this.elapsed = Math.min(this.elapsed, this.config.match.durationSec);
+    Object.assign(this.input, emptyInput());
+    this.emit({ type: 'ended', reason });
+  }
+
+  private emit(e: GameEvent): void {
+    this.listeners.forEach(l => l(e));
+  }
+
+  /** Release references; called on unmount/restart. */
+  dispose(): void {
+    this.listeners.clear();
+    this.enemies.length = 0;
+    this.projectiles.length = 0;
+  }
 }

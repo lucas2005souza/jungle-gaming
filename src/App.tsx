@@ -1,122 +1,98 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createConfig, DEFAULT_OPTIONS } from './game/config';
+import { loadGameTextures, type GameTextures } from './game/render/assets';
+import { mountGameSession, type GameSession } from './game/GameSession';
 
-function App() {
-  const [count, setCount] = useState(0)
+/**
+ * TEMPORARY dev harness: proves the Pixi renderer + simulation + lifecycle end to end.
+ * Replaced by the real menu / options / result screens in the next step.
+ */
 
+function Hud({ session, onRestart }: { session: GameSession; onRestart: () => void }) {
+  const s = useSyncExternalStore(session.subscribe, session.getSnapshot);
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+      <div className="hud" aria-live="off">
+        <span>Score {s.score}</span>
+        <span>Time {s.timeLeftSec}s</span>
+        <span>HP {s.hp}/{s.maxHp}</span>
+        <button onClick={() => session.pause()}>Pause</button>
+      </div>
+      {s.status === 'paused' && (
+        <div className="overlay" role="dialog" aria-label="Paused">
+          <h2>Paused</h2>
+          <button autoFocus onClick={() => session.resume()}>Resume</button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+      )}
+      {s.status === 'ended' && (
+        <div className="overlay" role="dialog" aria-label="Match over">
+          <h2>{s.reason === 'time_up' ? 'Time is up' : 'Ship destroyed'}</h2>
+          <p>Score: {s.score}</p>
+          <button autoFocus onClick={onRestart}>Play again</button>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      )}
+      <p className="help">W/↑ sail · A/D or ←/→ turn · Space fire · Q/E broadside · P pause</p>
     </>
-  )
+  );
 }
 
-export default App
+function Game({ textures, onRestart }: { textures: GameTextures; onRestart: () => void }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [session, setSession] = useState<GameSession | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let alive = true;
+    const mounted = mountGameSession(host, createConfig(DEFAULT_OPTIONS), textures);
+    mounted.ready
+      .then(s => { if (alive && s) setSession(s); })
+      .catch(e => { if (alive) setError(String(e)); });
+    return () => {
+      alive = false;
+      mounted.dispose();
+    };
+  }, [textures]);
+
+  return (
+    <div className="stage">
+      <div className="host" ref={hostRef} />
+      {session && <Hud session={session} onRestart={onRestart} />}
+      {error && <p role="alert" className="overlay">Could not start the game: {error}</p>}
+    </div>
+  );
+}
+
+export default function App() {
+  const [textures, setTextures] = useState<GameTextures | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [runId, setRunId] = useState(0);
+
+  const load = useCallback(() => {
+    setLoadError(null);
+    setProgress(0);
+    loadGameTextures(setProgress).then(setTextures).catch(e => setLoadError(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loadError) {
+    return (
+      <div className="center" role="alert">
+        <p>{loadError}</p>
+        <button onClick={load}>Retry</button>
+      </div>
+    );
+  }
+  if (!textures) {
+    return (
+      <div className="center">
+        <progress max={1} value={progress} aria-label="Loading assets" />
+        <p>Loading… {Math.round(progress * 100)}%</p>
+      </div>
+    );
+  }
+  return <Game key={runId} textures={textures} onRestart={() => setRunId(n => n + 1)} />;
+}
