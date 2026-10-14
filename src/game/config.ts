@@ -37,6 +37,8 @@ export interface GameConfig {
     maxEnemies: number;
     spawnMinDistanceFromPlayer: number;
     spawnEdgeMargin: number;
+    /** Extra spacing (px) enemies try to keep between hulls. */
+    enemySeparation: number;
     spawnWeights: { chaser: number; shooter: number };
   };
   player: {
@@ -91,16 +93,17 @@ export const BASE_CONFIG: GameConfig = {
     maxEnemies: 12,
     spawnMinDistanceFromPlayer: 360,
     spawnEdgeMargin: 60,
+    enemySeparation: 60,
     spawnWeights: { chaser: 0.5, shooter: 0.5 },
   },
   player: {
-    ship: { maxHp: 100, speed: 190, turnRate: 2.2, radius: 26 },
+    ship: { maxHp: 100, speed: 190, turnRate: 2.2, radius: 30 },
     front: { damage: 12, projectileSpeed: 620, projectileLife: 1.1, cooldown: 0.28, projectileRadius: 5 },
     side: { damage: 8, projectileSpeed: 560, projectileLife: 0.9, cooldown: 0.9, projectileRadius: 5, count: 3, spacing: 22 },
   },
-  chaser: { ship: { maxHp: 30, speed: 130, turnRate: 1.9, radius: 22 }, contactDamage: 25 },
+  chaser: { ship: { maxHp: 30, speed: 130, turnRate: 1.9, radius: 26 }, contactDamage: 25 },
   shooter: {
-    ship: { maxHp: 45, speed: 90, turnRate: 1.5, radius: 24 },
+    ship: { maxHp: 45, speed: 90, turnRate: 1.5, radius: 28 },
     weapon: { damage: 8, projectileSpeed: 380, projectileLife: 1.6, cooldown: 1.6, projectileRadius: 5 },
     attackRange: 420,
     keepDistance: 280,

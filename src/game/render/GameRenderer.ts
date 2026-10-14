@@ -7,9 +7,9 @@ import { DAMAGE_STAGES, SHIP_COLORS, shipTextureKey, type GameTextures } from '.
 const WATER = 0x2a8fb5;
 
 const KIND_STYLE: Record<ShipKind, { color: number; scale: number }> = {
-  player: { color: SHIP_COLORS.blue, scale: 0.62 },
-  chaser: { color: SHIP_COLORS.red, scale: 0.52 },
-  shooter: { color: SHIP_COLORS.black, scale: 0.56 },
+  player: { color: SHIP_COLORS.blue, scale: 0.8 },
+  chaser: { color: SHIP_COLORS.red, scale: 0.7 },
+  shooter: { color: SHIP_COLORS.black, scale: 0.74 },
 };
 
 interface ShipView {
@@ -20,7 +20,8 @@ interface ShipView {
   hpShown: number;
   flash: number;
   seen: number;
-  radius: number;
+  /** Distance from ship centre to where the health bar floats (half hull length + gap). */
+  barOffset: number;
 }
 
 interface Effect {
@@ -211,7 +212,7 @@ export class GameRenderer {
         view.hpShown = ship.hp;
         this.drawBar(view.bar, ship.hp / ship.maxHp);
       }
-      view.bar.position.set(ship.x, ship.y - ship.radius - 18);
+      view.bar.position.set(ship.x, ship.y - view.barOffset);
     }
     for (const [id, view] of this.ships) {
       if (view.seen !== this.frameId) {
@@ -237,7 +238,7 @@ export class GameRenderer {
     const bar = new Graphics();
     this.shipLayer.addChild(sprite);
     this.barLayer.addChild(bar);
-    const view: ShipView = { sprite, fire, bar, stage, hpShown: -1, flash: 0, seen: this.frameId, radius: ship.radius };
+    const view: ShipView = { sprite, fire, bar, stage, hpShown: -1, flash: 0, seen: this.frameId, barOffset: sprite.height / 2 + 10 };
     this.ships.set(ship.id, view);
     return view;
   }
@@ -327,7 +328,7 @@ export class GameRenderer {
         const ship = e.shipId === this.sim.player.id ? this.sim.player : this.sim.enemies.find(s => s.id === e.shipId);
         if (!ship) return;
         if (e.weapon === 'front') {
-          this.spawnEffect(flame, ship.x + forwardX(e.heading) * (ship.radius + 6), ship.y + forwardY(e.heading) * (ship.radius + 6), 0.14, 0.7, 1.1, e.heading);
+          this.spawnEffect(flame, ship.x + forwardX(e.heading) * (ship.radius + 16), ship.y + forwardY(e.heading) * (ship.radius + 16), 0.14, 0.7, 1.1, e.heading);
         } else {
           const side = this.sim.config.player.side;
           for (let i = 0; i < side.count; i++) {

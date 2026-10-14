@@ -14,6 +14,8 @@ export interface Ship {
   maxHp: number;
   radius: number;
   alive: boolean;
+  /** Enemy island steering: -1 = pass island on the right, +1 = on the left, 0 = free. Keeps the detour stable. */
+  avoidSide: number;
   /** seconds remaining until each weapon is ready */
   cooldowns: { front: number; left: number; right: number };
 }

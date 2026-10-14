@@ -115,7 +115,7 @@ export class Simulation {
   private makeShip(kind: ShipKind, x: number, y: number, heading: number, s: ShipStats): Ship {
     return {
       id: this.nextId++, kind, x, y, heading, hp: s.maxHp, maxHp: s.maxHp,
-      radius: s.radius, alive: true, cooldowns: { front: 0, left: 0, right: 0 },
+      radius: s.radius, alive: true, avoidSide: 0, cooldowns: { front: 0, left: 0, right: 0 },
     };
   }
 
@@ -212,7 +212,21 @@ export class Simulation {
       const stats = e.kind === 'chaser' ? this.config.chaser.ship : this.config.shooter.ship;
       const dx = p.x - e.x, dy = p.y - e.y;
       const dist = Math.hypot(dx, dy);
-      let desired = headingTo(dx, dy);
+      // Goal vector toward the player, bent away from nearby allies so they spread out.
+      let tx = dx / (dist || 1), ty = dy / (dist || 1);
+      const sepR = this.config.match.enemySeparation;
+      for (const o of this.enemies) {
+        if (o === e || !o.alive) continue;
+        const ox = e.x - o.x, oy = e.y - o.y;
+        const od = Math.hypot(ox, oy) || 0.001;
+        const range = e.radius + o.radius + sepR;
+        if (od < range) {
+          const w = (1 - od / range) * 1.6;
+          tx += (ox / od) * w;
+          ty += (oy / od) * w;
+        }
+      }
+      let desired = headingTo(tx, ty);
       desired = this.avoidIslands(e, desired, stats.speed);
       e.heading = turnToward(e.heading, desired, stats.turnRate * dt);
 
@@ -232,23 +246,52 @@ export class Simulation {
         this.moveShip(e, forwardX(e.heading) * v, forwardY(e.heading) * v);
       }
     }
+    this.separateEnemies();
   }
 
-  /** Whisker steering: if the bow points into an island, bend the desired heading around it. */
-  private avoidIslands(e: Ship, desired: number, speed: number): number {
-    const look = speed * 0.9 + e.radius;
-    const fx = forwardX(desired), fy = forwardY(desired);
-    for (const isl of this.config.islands) {
-      const margin = isl.radius + e.radius + 14;
-      const rx = isl.x - e.x, ry = isl.y - e.y;
-      const proj = rx * fx + ry * fy;
-      if (proj < 0 || proj > look + isl.radius) continue;
-      const lateral = rx * fy - ry * fx; // >0: island on the right of the desired line
-      if (Math.abs(lateral) < margin) {
-        const away = lateral > 0 ? -1 : 1;
-        return normalizeAngle(desired + away * Math.PI * 0.45);
+  /** Hard positional separation so hulls never stack, even when steering is not enough. */
+  private separateEnemies(): void {
+    const list = this.enemies;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i];
+      if (!a.alive) continue;
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j];
+        if (!b.alive) continue;
+        const ox = b.x - a.x, oy = b.y - a.y;
+        const min = (a.radius + b.radius) * 0.9;
+        const d2 = ox * ox + oy * oy;
+        if (d2 >= min * min) continue;
+        const d = Math.sqrt(d2) || 0.001;
+        const push = (min - d) / 2;
+        const nx = ox / d, ny = oy / d;
+        this.moveShip(a, -nx * push, -ny * push);
+        this.moveShip(b, nx * push, ny * push);
       }
     }
+  }
+
+  /**
+   * Island avoidance: when the straight route to the target would graze an island, steer along the
+   * tangent. The side is chosen once and kept (avoidSide) until the way is clear, so ships commit to
+   * one detour instead of flip-flopping and hugging the shore.
+   */
+  private avoidIslands(e: Ship, desired: number, speed: number): number {
+    const look = speed * 1.1 + e.radius + 40;
+    const fx = forwardX(desired), fy = forwardY(desired);
+    for (const isl of this.config.islands) {
+      const margin = isl.radius + e.radius + 26;
+      const rx = isl.x - e.x, ry = isl.y - e.y;
+      const proj = rx * fx + ry * fy;
+      if (proj < -isl.radius * 0.3 || proj > look + isl.radius) continue;
+      const lateral = rx * fy - ry * fx; // >0: island on the right of the desired line
+      if (Math.abs(lateral) >= margin) continue;
+      if (e.avoidSide === 0) e.avoidSide = lateral > 0 ? -1 : 1;
+      const dist = Math.hypot(rx, ry) || 0.001;
+      const subtended = Math.asin(Math.min(1, margin / dist));
+      return normalizeAngle(headingTo(rx, ry) + e.avoidSide * (subtended + 0.12));
+    }
+    e.avoidSide = 0;
     return desired;
   }
 
