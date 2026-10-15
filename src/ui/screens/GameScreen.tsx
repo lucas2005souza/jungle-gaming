@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { createConfig, type GameOptions } from '../../game/config';
 import { loadGameTextures, type GameTextures } from '../../game/render/assets';
 import { mountGameSession, type GameSession } from '../../game/GameSession';
-import { appendHistory, saveLastResult, type StoredMatchResult } from '../../storage/localStore';
+import { submitMatch, toMatchRecord } from '../../api/recorder';
+import { saveLastResult, type StoredMatchResult } from '../../storage/localStore';
 import { Dialog } from '../Dialog';
 import { TouchControls } from '../TouchControls';
 import { REASON_LABEL, formatTime } from '../format';
@@ -122,7 +123,7 @@ function MatchOverlay({ session, onExit, onFinished }: { session: GameSession; o
       if (!r) return;
       storedRef.current = { ...r, matchId: crypto.randomUUID(), endedAt: new Date().toISOString() };
       saveLastResult(storedRef.current);
-      appendHistory(storedRef.current);
+      submitMatch(toMatchRecord(storedRef.current));
     }
     const stored = storedRef.current;
     const t = window.setTimeout(() => onFinished(stored), 1300);

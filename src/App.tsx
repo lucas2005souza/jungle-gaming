@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
 import type { GameOptions } from './game/config';
-import { loadHistory, loadLastResult, loadOptions, type StoredMatchResult } from './storage/localStore';
+import { loadLastResult, loadOptions, type StoredMatchResult } from './storage/localStore';
+import { MockPanel } from './ui/MockPanel';
+import { GameScreen } from './ui/screens/GameScreen';
 import { LogScreen, type LogTab } from './ui/screens/LogScreen';
 import { MainMenu } from './ui/screens/MainMenu';
 import { OptionsScreen } from './ui/screens/OptionsScreen';
-import { GameScreen } from './ui/screens/GameScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
 
 type Screen =
@@ -12,7 +13,8 @@ type Screen =
   | { name: 'options' }
   | { name: 'log'; tab: LogTab }
   | { name: 'game'; runId: number }
-  | { name: 'result'; result: StoredMatchResult };   
+  | { name: 'result'; result: StoredMatchResult };
+
 export default function App() {
   const [options, setOptions] = useState<GameOptions>(loadOptions);
   const [lastResult, setLastResult] = useState<StoredMatchResult | null>(loadLastResult);
@@ -25,17 +27,22 @@ export default function App() {
     setScreen({ name: 'result', result: r });
   }, []);
 
+  let content;
   switch (screen.name) {
     case 'options':
-      return <OptionsScreen initial={options} onSaved={setOptions} onBack={toMenu} />;
+      content = <OptionsScreen initial={options} onSaved={setOptions} onBack={toMenu} />;
+      break;
     case 'log':
-      return <LogScreen initialTab={screen.tab} options={options} history={loadHistory()} onBack={toMenu} />;
+      content = <LogScreen initialTab={screen.tab} options={options} onBack={toMenu} />;
+      break;
     case 'game':
-      return <GameScreen key={screen.runId} options={options} onExit={toMenu} onFinished={finished} />;
+      content = <GameScreen key={screen.runId} options={options} onExit={toMenu} onFinished={finished} />;
+      break;
     case 'result':
-      return <ResultScreen result={screen.result} onPlayAgain={play} onMenu={toMenu} />;
+      content = <ResultScreen result={screen.result} onPlayAgain={play} onMenu={toMenu} />;
+      break;
     default:
-      return (
+      content = (
         <MainMenu
           lastResult={lastResult}
           onPlay={play}
@@ -45,4 +52,11 @@ export default function App() {
         />
       );
   }
+
+  return (
+    <>
+      {content}
+      {screen.name !== 'game' && <MockPanel />}
+    </>
+  );
 }

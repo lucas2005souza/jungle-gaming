@@ -163,3 +163,21 @@ progress { width: min(320px, 70vw); height: 16px; }
   .wood-btn.big { --by: 22px; --bx: 30px; font-size: 18px; }
   .log-table-wrap { min-height: 0; }
 }
+
+/* ---------- Captain's Log: data states, ranking extras ---------- */
+.log-table.ranking th:nth-child(1) { width: 14%; }
+.log-table.ranking th:nth-child(2) { width: 46%; }
+.log-table.ranking th:nth-child(3) { width: 14%; }
+.log-table .star { height: 18px; width: auto; margin-right: 8px; vertical-align: -3px; }
+.log-table .you { margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--coin); background: rgba(255, 217, 138, .16); border: 1px solid rgba(255, 217, 138, .5); }
+.log-state { margin: 28px 0; text-align: center; color: #cfd9e3; font-size: 14px; }
+.error-box { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #ffd0d0; }
+.error-box p { margin: 0; }
+.refreshing { color: var(--coin); }
+
+/* ---------- Network scenario panel ---------- */
+.mock-panel { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 40; max-width: min(300px, calc(100vw - 20px)); padding: 6px 10px; border-radius: 10px; background: rgba(5, 20, 32, .88); border: 1px solid var(--line); font-size: 13px; color: var(--text); }
+.mock-panel summary { cursor: pointer; font-weight: 700; }
+.mock-panel label { display: block; margin: 8px 0 4px; font-weight: 700; }
+.mock-panel select { width: 100%; font: inherit; padding: 6px 8px; min-height: 36px; border-radius: 6px; border: 1px solid var(--line); background: rgba(0, 0, 0, .4); color: var(--text); }
+.mock-panel .btn { margin-top: 6px; }
