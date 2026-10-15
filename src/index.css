@@ -181,3 +181,9 @@ progress { width: min(320px, 70vw); height: 16px; }
 .mock-panel label { display: block; margin: 8px 0 4px; font-weight: 700; }
 .mock-panel select { width: 100%; font: inherit; padding: 6px 8px; min-height: 36px; border-radius: 6px; border: 1px solid var(--line); background: rgba(0, 0, 0, .4); color: var(--text); }
 .mock-panel .btn { margin-top: 6px; }
+
+/* ---------- Ranking: leaderboard configuration filters ---------- */
+.log-filters { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; align-items: flex-end; margin: 2px 0 4px; }
+.log-filters label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #a9b7c6; }
+.log-filters select { font: 700 13px var(--ui-font); letter-spacing: 0; text-transform: none; min-height: 34px; min-width: 96px; padding: 4px 10px; color: var(--cream); background: rgba(12, 24, 38, .9); border: 1px solid rgba(255, 217, 138, .45); border-radius: 8px; cursor: pointer; }
+.log-filters select option { color: #111; background: #fff; }

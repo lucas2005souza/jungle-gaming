@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { describeError } from '../../api/client';
 import { useHistory, useRanking } from '../../api/queries';
-import type { GameOptions } from '../../game/config';
+import { OPTION_LIMITS, type GameOptions } from '../../game/config';
 import { PLAYER_ID, PLAYER_NAME } from '../../player';
 import { RESULT_LABEL, formatClock, formatLogDate } from '../format';
 
@@ -12,6 +12,13 @@ const TABS: { id: LogTab; label: string }[] = [
 ];
 const UI = '/assets/png/default/ui';
 
+/** Every selectable value of an option (min..max by step), plus any extra values currently in use. */
+function valuesFor({ min, max, step }: { min: number; max: number; step: number }, extra: number[]): number[] {
+  const steps = Math.round((max - min) / step);
+  const list = Array.from({ length: steps + 1 }, (_, i) => Math.round((min + i * step) * 100) / 100);
+  return [...new Set([...list, ...extra])].sort((a, b) => a - b);
+}
+
 interface Props {
   initialTab: LogTab;
   options: GameOptions;
@@ -20,13 +27,16 @@ interface Props {
 
 export function LogScreen({ initialTab, options, onBack }: Props) {
   const [tab, setTab] = useState<LogTab>(initialTab);
-  const [page, setPage] = useState(0); // zero-based; reset when the tab changes
+  const [page, setPage] = useState(0); // zero-based; reset when the tab or the leaderboard changes
+  // Which leaderboard the Ranking tab shows. Starts at the player's options; changing it
+  // only changes this view, never the options used to play.
+  const [view, setView] = useState<GameOptions>(options);
   const tabRefs = useRef<Record<LogTab, HTMLButtonElement | null>>({ ranking: null, history: null });
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => titleRef.current?.focus(), []);
 
   // Both hooks are always called (rules of hooks); only the visible tab is enabled.
-  const ranking = useRanking(options, page, tab === 'ranking');
+  const ranking = useRanking(view, page, tab === 'ranking');
   const history = useHistory(page, tab === 'history');
   const q = tab === 'ranking' ? ranking : history;
 
@@ -42,6 +52,8 @@ export function LogScreen({ initialTab, options, onBack }: Props) {
   const pageCount = data?.pageCount ?? 1;
   const current = data ? data.page - 1 : page;
   const refreshing = q.isFetching && !q.isPending;
+  const viewChanged = view.durationSec !== options.durationSec || view.spawnIntervalSec !== options.spawnIntervalSec;
+  const changeView = (next: GameOptions) => { setView(next); setPage(0); };
 
   return (
     <main className="scene">
@@ -67,10 +79,33 @@ export function LogScreen({ initialTab, options, onBack }: Props) {
         </div>
 
         <div role="tabpanel" id="log-panel" aria-labelledby={`tab-${tab}`} aria-busy={q.isPending}>
+          {tab === 'ranking' && (
+            <div className="log-filters" role="group" aria-label="Leaderboard configuration">
+              <label>
+                Battle length
+                <select value={view.durationSec} onChange={(e) => changeView({ ...view, durationSec: Number(e.target.value) })}>
+                  {valuesFor(OPTION_LIMITS.durationSec, [options.durationSec, view.durationSec]).map((v) => (
+                    <option key={v} value={v}>{v} s</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Spawn interval
+                <select value={view.spawnIntervalSec} onChange={(e) => changeView({ ...view, spawnIntervalSec: Number(e.target.value) })}>
+                  {valuesFor(OPTION_LIMITS.spawnIntervalSec, [options.spawnIntervalSec, view.spawnIntervalSec]).map((v) => (
+                    <option key={v} value={v}>{v} s</option>
+                  ))}
+                </select>
+              </label>
+              {viewChanged && (
+                <button className="link-btn" onClick={() => changeView(options)}>Use my options</button>
+              )}
+            </div>
+          )}
           <p className="log-sub">
             {tab === 'history'
               ? `${PLAYER_NAME} · your recent battles`
-              : `${options.durationSec} second battles · ${options.spawnIntervalSec} second spawn interval`}
+              : `${view.durationSec} second battles · ${view.spawnIntervalSec} second spawn interval`}
             {refreshing && <span className="refreshing"> · updating…</span>}
           </p>
 
@@ -131,7 +166,7 @@ export function LogScreen({ initialTab, options, onBack }: Props) {
               <p className="log-state" role="status">
                 {tab === 'history'
                   ? 'No battles yet. Finish a match and it will be logged here.'
-                  : `No captain has played ${options.durationSec}-second battles with a ${options.spawnIntervalSec}-second spawn interval yet. Finish a match with these options to start this leaderboard.`}
+                  : `No captain has played ${view.durationSec}-second battles with a ${view.spawnIntervalSec}-second spawn interval yet. Finish a match with these options to start this leaderboard.`}
               </p>
             )}
           </div>
