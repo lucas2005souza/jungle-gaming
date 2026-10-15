@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import App from './App.tsx'
 import { queryClient } from './api/queryClient'
-import { flushAll } from './api/recorder'
+import { flushAll, migrateLegacyMatches } from './api/recorder'
 import { startMocks } from './mocks/browser'
 
 async function bootstrap() {
@@ -17,6 +17,7 @@ async function bootstrap() {
       </QueryClientProvider>
     </StrictMode>,
   );
+  migrateLegacyMatches(); // one-time: import matches saved before the API existed
   flushAll(); // re-send matches that were still pending when the page was closed
 }
 

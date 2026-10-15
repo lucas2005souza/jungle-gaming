@@ -36,7 +36,7 @@ export default function App() {
       content = <LogScreen initialTab={screen.tab} options={options} onBack={toMenu} />;
       break;
     case 'game':
-      content = <GameScreen key={screen.runId} options={options} onExit={toMenu} onFinished={finished} />;
+      content = <GameScreen key={screen.runId} options={options} onExit={toMenu} onFinished={finished} onOptionsSaved={setOptions} />;
       break;
     case 'result':
       content = <ResultScreen result={screen.result} onPlayAgain={play} onMenu={toMenu} />;

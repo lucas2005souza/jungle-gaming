@@ -1,4 +1,4 @@
-import type { StoredMatchResult } from '../storage/localStore';
+import { finishLegacyMigration, isLegacyMigrated, loadLegacyHistory, type StoredMatchResult } from '../storage/localStore';
 import { PLAYER_ID, PLAYER_NAME } from '../player';
 import { isRetryable, saveMatch } from './client';
 import type { MatchRecord } from './contracts';
@@ -134,6 +134,17 @@ export function submitMatch(record: MatchRecord): void {
 /** Re-sends everything not yet confirmed: app start, back online, scenario recovery. */
 export function flushAll(): void {
   for (const [id, e] of entries) if (e.status !== 'saving') void flush(id);
+}
+
+/**
+ * One-time import of matches saved by the old local-only history, so nothing a player already
+ * won gets lost. Safe to interrupt: submitMatch() persists each match before the old data is dropped,
+ * and the server ignores repeated ids.
+ */
+export function migrateLegacyMatches(): void {
+  if (isLegacyMigrated()) return;
+  for (const r of loadLegacyHistory()) submitMatch(toMatchRecord(r));
+  finishLegacyMigration();
 }
 
 export function resetRecorder(): void {

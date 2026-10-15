@@ -56,3 +56,24 @@ export function parseStoredResult(v: unknown): StoredMatchResult | null {
 export const loadLastResult = (): StoredMatchResult | null => parseStoredResult(read(LAST_RESULT_KEY));
 
 export const saveLastResult = (r: StoredMatchResult): boolean => write(LAST_RESULT_KEY, r);
+
+// ---- legacy local history (before matches were sent to the API) ----
+const LEGACY_HISTORY_KEY = 'pirate-battle:history:v1';
+const LEGACY_MIGRATED_KEY = 'pirate-battle:legacy-migrated:v1';
+
+/** Matches saved by the older, local-only history. Corrupted entries are skipped. */
+export function loadLegacyHistory(): StoredMatchResult[] {
+  const v = read(LEGACY_HISTORY_KEY);
+  return Array.isArray(v) ? v.map(parseStoredResult).filter((r): r is StoredMatchResult => r !== null) : [];
+}
+
+export const isLegacyMigrated = (): boolean => read(LEGACY_MIGRATED_KEY) === true;
+
+export function finishLegacyMigration(): void {
+  write(LEGACY_MIGRATED_KEY, true);
+  try {
+    localStorage.removeItem(LEGACY_HISTORY_KEY);
+  } catch {
+    /* ignore */
+  }
+}

@@ -5,6 +5,8 @@ import { mountGameSession, type GameSession } from '../../game/GameSession';
 import { submitMatch, toMatchRecord } from '../../api/recorder';
 import { saveLastResult, type StoredMatchResult } from '../../storage/localStore';
 import { Dialog } from '../Dialog';
+import { PauseDialog } from '../PauseDialog';
+import '../dialogs.css';
 import { TouchControls } from '../TouchControls';
 import { REASON_LABEL, formatTime } from '../format';
 
@@ -12,10 +14,12 @@ interface Props {
   options: GameOptions;
   onExit: () => void;
   onFinished: (r: StoredMatchResult) => void;
+  /** Options edited from the pause menu: they only affect the next match. */
+  onOptionsSaved: (o: GameOptions) => void;
 }
 
 /** Loads textures (progress + retry), then mounts the match. Leaving the screen destroys the match. */
-export function GameScreen({ options, onExit, onFinished }: Props) {
+export function GameScreen({ options, onExit, onFinished, onOptionsSaved }: Props) {
   const [textures, setTextures] = useState<GameTextures | null>(null);
   const [progress, setProgress] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,33 +41,33 @@ export function GameScreen({ options, onExit, onFinished }: Props) {
 
   if (loadError) {
     return (
-      <main className="screen center">
-        <div className="panel" role="alert">
-          <h1>Could not load game assets</h1>
-          <p>{loadError}</p>
-          <div className="row">
-            <button className="btn primary" autoFocus onClick={retry}>Try again</button>
-            <button className="btn" onClick={onExit}>Main Menu</button>
+      <main className="scene">
+        <section className="wood-panel dialog-panel" role="alert" aria-labelledby="load-error-title">
+          <h1 id="load-error-title" className="wood-title">Could not load game assets</h1>
+          <p className="opt-hint">{loadError}</p>
+          <div className="dialog-actions">
+            <button className="wood-btn primary big" autoFocus onClick={retry}>Try again</button>
+            <button className="wood-btn secondary big" onClick={onExit}>Main Menu</button>
           </div>
-        </div>
+        </section>
       </main>
     );
   }
   if (!textures) {
     return (
-      <main className="screen center">
-        <div className="panel">
-          <h1>Loading</h1>
-          <progress max={1} value={progress} aria-label="Loading game assets" />
-          <p role="status">{Math.round(progress * 100)}%</p>
-        </div>
+      <main className="scene">
+        <section className="wood-panel dialog-panel" aria-labelledby="loading-title">
+          <h1 id="loading-title" className="wood-title">Loading</h1>
+          <progress className="wood-progress" max={1} value={progress} aria-label="Loading game assets" />
+          <p className="result-meta" role="status">{Math.round(progress * 100)}%</p>
+        </section>
       </main>
     );
   }
-  return <Match textures={textures} options={options} onExit={onExit} onFinished={onFinished} />;
+  return <Match textures={textures} options={options} onExit={onExit} onFinished={onFinished} onOptionsSaved={onOptionsSaved} />;
 }
 
-function Match({ textures, options, onExit, onFinished }: Props & { textures: GameTextures }) {
+function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props & { textures: GameTextures }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [session, setSession] = useState<GameSession | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,12 +101,12 @@ function Match({ textures, options, onExit, onFinished }: Props & { textures: Ga
   return (
     <main className="game-screen">
       <div className="host" ref={hostRef} aria-label="Game arena" role="img" />
-      {session && <MatchOverlay session={session} onExit={onExit} onFinished={onFinished} />}
+      {session && <MatchOverlay session={session} options={options} onExit={onExit} onFinished={onFinished} onOptionsSaved={onOptionsSaved} />}
       {error && (
         <Dialog label="Game error">
-          <h2>Could not start the match</h2>
-          <p role="alert">{error}</p>
-          <button className="btn primary" onClick={onExit}>Main Menu</button>
+          <h2 className="wood-title">Could not start the match</h2>
+          <p role="alert" className="opt-hint">{error}</p>
+          <button className="wood-btn primary big" onClick={onExit}>Main Menu</button>
         </Dialog>
       )}
       <div className="rotate-hint" aria-hidden="true">Rotate your device to landscape</div>
@@ -110,7 +114,7 @@ function Match({ textures, options, onExit, onFinished }: Props & { textures: Ga
   );
 }
 
-function MatchOverlay({ session, onExit, onFinished }: { session: GameSession; onExit: () => void; onFinished: (r: StoredMatchResult) => void }) {
+function MatchOverlay({ session, options, onExit, onFinished, onOptionsSaved }: Props & { session: GameSession }) {
   const s = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const storedRef = useRef<StoredMatchResult | null>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -161,14 +165,7 @@ function MatchOverlay({ session, onExit, onFinished }: { session: GameSession; o
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
 
       {s.status === 'paused' && (
-        <Dialog label="Game paused">
-          <h2>Paused</h2>
-          <p className="hint">The match is frozen. Controls pressed while paused are ignored.</p>
-          <div className="row">
-            <button className="btn primary" onClick={() => session.resume()}>Resume</button>
-            <button className="btn" onClick={onExit}>Quit to menu</button>
-          </div>
-        </Dialog>
+        <PauseDialog session={session} options={options} onExit={onExit} onOptionsSaved={onOptionsSaved} />
       )}
     </>
   );

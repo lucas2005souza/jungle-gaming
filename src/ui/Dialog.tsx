@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import './dialogs.css';
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -35,7 +36,7 @@ export function Dialog({ label, children }: { label: string; children: ReactNode
 
   return (
     <div className="overlay">
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={label} className="dialog">
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={label} className="wood-panel dialog-panel">
         {children}
       </div>
     </div>
