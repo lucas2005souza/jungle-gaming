@@ -2,8 +2,6 @@
 
 A 2D top-down naval shooter built with **React**, **TypeScript** and **PixiJS**. Sail between islands, fight Chaser and Shooter ships and score as many points as you can before the clock runs out or your hull is destroyed.
 
-- **Live demo:** `https://<your-project>.vercel.app` (replace with the deployed URL)
-- **Português:** [README.pt-BR.md](README.pt-BR.md)
 - **Architecture notes:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Test and performance reports:** [docs/reports](docs/reports) and [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 

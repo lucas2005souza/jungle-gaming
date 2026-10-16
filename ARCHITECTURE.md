@@ -1,6 +1,6 @@
 # Architecture
 
-Português: [ARCHITECTURE.pt-BR.md](ARCHITECTURE.pt-BR.md) · Back to the [README](README.md)
+Back to the [README](README.md)
 
 ## 1. Overview
 
