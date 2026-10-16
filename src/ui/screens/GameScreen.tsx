@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { createConfig, type GameOptions } from '../../game/config';
 import { loadGameTextures, type GameTextures } from '../../game/render/assets';
 import { mountGameSession, type GameSession } from '../../game/GameSession';
+import { installTestHooks, readE2EParams } from '../../game/testHooks';
 import { submitMatch, toMatchRecord } from '../../api/recorder';
 import { saveLastResult, type StoredMatchResult } from '../../storage/localStore';
 import { Dialog } from '../Dialog';
@@ -72,22 +73,30 @@ function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props 
   const [session, setSession] = useState<GameSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Snapshot of the options at match start: later edits only affect new matches.
-  const [config] = useState(() => createConfig(options));
+  // `?e2e=1` (tests only): fixed seed, manual clock and a state/clock hook. Off in normal play.
+  const [e2e] = useState(readE2EParams);
+  const [config] = useState(() => createConfig(options, e2e.seed));
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     let alive = true;
-    const mounted = mountGameSession(host, config, textures);
+    let removeHooks: (() => void) | undefined;
+    const mounted = mountGameSession(host, config, textures, e2e.enabled ? { manualClock: e2e.manualClock } : undefined);
     mounted.ready
-      .then(s => { if (alive && s) setSession(s); })
+      .then(s => {
+        if (!alive || !s) return;
+        if (e2e.enabled) removeHooks = installTestHooks(s);
+        setSession(s);
+      })
       .catch(e => { if (alive) setError(e instanceof Error ? e.message : String(e)); });
     return () => {
       alive = false;
+      removeHooks?.();
       mounted.dispose();
       setSession(null);
     };
-  }, [config, textures]);
+  }, [config, textures, e2e]);
 
   // Portrait phones: pause instead of squeezing the arena.
   useEffect(() => {

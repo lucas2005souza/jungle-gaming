@@ -1,198 +1,169 @@
 # Pirate Battle
 
-A top-down 2D naval arcade shooter built with **React, TypeScript, and
-PixiJS**. Sail around islands, fight enemy ships, survive the match
-timer, and try to earn a high score.
+A 2D top-down naval shooter built with **React**, **TypeScript** and **PixiJS**. Sail between islands, fight Chaser and Shooter ships and score as many points as you can before the clock runs out or your hull is destroyed.
 
-> **Project status:** Front-end game prototype. The ranking and
-> match-history API is simulated in the browser with Mock Service Worker
-> (MSW); this repository does not include a production backend.
+- **Live demo:** `https://<your-project>.vercel.app` (replace with the deployed URL)
+- **Português:** [README.pt-BR.md](README.pt-BR.md)
+- **Architecture notes:** [ARCHITECTURE.md](ARCHITECTURE.md)
+- **Test and performance reports:** [docs/reports](docs/reports) and [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 
-## Features
+## Stack
 
--   Top-down naval combat rendered with PixiJS.
--   Keyboard and touch controls.
--   Forward cannon and left/right broadside weapons.
--   Enemy ship types with different behavior.
--   Islands, collision handling, projectiles, hit effects, and ship
-    damage states.
--   Match timer, player health, score, pause/resume, and end-of-match
-    results.
--   Configurable match duration and enemy spawn interval.
--   Ranking and match history screens with pagination.
--   Local persistence for options and recent results.
--   Mock API scenarios for loading, latency, network failures, server
-    errors, and save-retry behavior.
--   Responsive interface with touch controls for mobile devices.
+| Responsibility | Technology |
+|---|---|
+| Menus and UI | React 19 |
+| Language | TypeScript (strict mode) |
+| Game rendering | PixiJS 8 |
+| Remote state (ranking, history) | TanStack Query 5 |
+| HTTP client | Axios |
+| API mocking | MSW 3 (service worker) |
+| E2E and visual regression | Playwright (Chromium, desktop and mobile) |
+| Build / lint | Vite 8 / Oxlint |
 
-## Tech stack
+## Setup
 
--   **React** --- menus, options, HUD, results, and history screens.
--   **TypeScript** --- typed gameplay rules, API contracts, and UI.
--   **PixiJS 8** --- 2D rendering and asset management.
--   **Vite** --- development server and production build.
--   **TanStack Query** --- ranking/history request state and caching.
--   **Axios** --- API client.
--   **Mock Service Worker (MSW)** --- browser-side mock API.
--   **Playwright** --- browser-test configuration is present in the
-    repository.
+Requirements: **Node.js 20.19+ or 22.12+** and npm.
 
-## Getting started
-
-### Requirements
-
-Install a current Node.js LTS release that is compatible with the
-installed Vite version, then verify that Node and npm are available:
-
-``` bash
-node --version
-npm --version
+```bash
+git clone <repository-url>
+cd jungle-game
+npm ci
+npx playwright install chromium   # only needed to run the E2E tests
+npm run dev                       # http://localhost:5173
 ```
 
-### Install dependencies
+No private services are required: the ranking and history API is simulated in the browser by MSW, also in the published build.
 
-From the project root (the folder containing `package.json`):
+## Commands
 
-``` bash
-npm install
-```
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server with hot reload |
+| `npm run build` | Type-checks (`tsc -b`) and creates the optimized build in `dist/` |
+| `npm run preview` | Serves the optimized build at http://localhost:4173 |
+| `npm run lint` | Oxlint |
+| `npm run typecheck` | `tsc -b` (strict) for the app |
+| `npm run typecheck:e2e` | Type-checks the Playwright tests |
+| `npm run test:e2e` | Whole E2E suite (desktop + mobile), against the optimized build |
+| `npm run test:e2e:desktop` / `test:e2e:mobile` | One Playwright project only |
+| `npm run test:e2e:update` | Creates or refreshes the visual baselines (desktop) |
+| `npm run test:e2e:report` | Opens the last HTML report |
+| `npm run typecheck:perf` | Type-checks the performance tests |
+| `npm run test:perf` | Performance and profiling: 3-minute FPS / p95 frame time / entities session and memory after 5 game cycles (optimized build, real clock) |
+| `npm run test:perf:report` | Opens the last performance HTML report |
 
-### Start the development server
+## Environment variables
 
-``` bash
-npm run dev
-```
+The app needs **none** to build or run. Optional switches:
 
-Open the local URL printed by Vite, usually `http://localhost:5173/`.
+| Variable | Used by | Meaning |
+|---|---|---|
+| `E2E_DEV=1` | Playwright | Test the dev server (`:5173`) instead of building and previewing |
+| `E2E_BASE_URL=https://...` | Playwright | Test an already running or deployed URL (no local server is started) |
+| `CI=1` | Playwright | 2 workers, 1 retry, `forbidOnly` |
+| `PERF_MIN_FPS` | `test:perf` | Minimum average FPS (default 55) |
+| `PERF_MAX_P95_MS` | `test:perf` | Maximum p95 time between frames in ms (default 20) |
+| `PERF_MAX_HEAP_GROWTH_MB` | `test:perf` | Maximum JS heap growth between cycle 1 and 5 (default 5) |
+| `PERF_MAX_LISTENER_GROWTH` / `PERF_MAX_NODE_GROWTH` | `test:perf` | Maximum growth of event listeners (default 5) / DOM nodes (default 100) |
 
-If PowerShell blocks `npm.ps1` on Windows, use the **Command Prompt
-(cmd)** terminal in VS Code and run the same command there. This avoids
-changing the system's PowerShell execution policy.
+Runtime query-string parameters (they work in dev, preview and the published build):
+
+| Parameter | Meaning |
+|---|---|
+| `?scenario=<id>` | Start with a network scenario (see below) |
+| `?latency=<ms>` | Fixed mock latency, used by the tests (scenarios with their own timing are overridden) |
+| `?e2e=1` | Test hook: fixed seed support and a manual simulation clock. Off in normal play |
+| `?clock=real` | With `e2e=1`: keep the real clock (pause tests) |
+| `?seed=<n>` | With `e2e=1`: seed for the enemy spawn RNG |
 
 ## Controls
 
-  Action                 Keyboard                 Touch
-  ---------------------- ------------------------ -----------------------------
-  Sail forward           `W` or `↑`               Forward button
-  Turn left / right      `A` / `D` or `←` / `→`   Left / right buttons
-  Fire forward           `Space`                  Front-fire button
-  Fire left broadside    `Q`                      Left-fire button
-  Fire right broadside   `E`                      Right-fire button
-  Pause / resume         `P` or `Esc`             Pause button / pause dialog
+| Action | Keyboard | Touch |
+|---|---|---|
+| Sail forward | `W` / `↑` | ▲ |
+| Rotate left / right | `A` `D` / `←` `→` | ◄ ► |
+| Fire front (1 projectile) | `Space` | ● |
+| Broadside left / right (3 parallel projectiles) | `Q` / `E` | ◄● / ●► |
+| Pause / resume | `P` / `Esc` | Pause button |
 
-On phones, the game is designed to be played in landscape orientation.
-You can steer and fire at the same time.
+You can sail, rotate and fire at the same time (multi-touch on phones). Touch controls appear on touch devices. **Phones: play in landscape**; in portrait the match pauses and asks you to rotate. The match also pauses when the window loses focus or the tab is hidden; resuming always needs a player action.
 
-## Gameplay options
+## Gameplay configuration
 
-The Options screen allows the player to change:
+All balance values live in **one typed object**, `BASE_CONFIG` in [`src/game/config.ts`](src/game/config.ts): arena size, islands, ship stats (health, speed, turn rate, collision radius), every weapon (damage, projectile speed and lifetime, cooldown), Shooter range, spawn distance and weights, and the maximum number of enemies. Systems read from it, so balance changes never require touching the rules.
 
--   **Match duration:** 60--180 seconds, in 5-second increments.
--   **Enemy spawn interval:** 0.5--10 seconds, in 0.5-second increments.
+The player edits two values in **Options** (validated, saved in `localStorage`, kept after a refresh):
 
-Options are validated and saved in browser `localStorage`. Changes made
-from the pause menu apply to the next match.
+| Option | Limits | Default |
+|---|---|---|
+| Game session time | 60 – 180 s (step 5) | 90 s |
+| Enemy spawn time | 0.5 – 10 s (step 0.5) | 2.5 s |
 
-## Ranking, history, and mock API
+Each match runs on a **snapshot** of the options taken when it starts; changing them (also from the pause menu) only affects the next match.
 
-The client sends requests to relative `/api` endpoints:
+## Network scenarios (mock API)
 
--   `GET /api/ranking`
--   `GET /api/matches`
--   `POST /api/matches`
+The ranking and match history use a REST API (`GET /api/ranking`, `GET /api/matches`, `POST /api/matches`) simulated by MSW. Confirmed matches and pending saves persist in `localStorage`.
 
-During app startup, MSW registers browser-side handlers for these
-endpoints. The handlers use deterministic fixture records and a mock
-database persisted in `localStorage`; they are not a substitute for a
-deployed backend.
+**Pick a scenario:** open the **"Network scenario"** panel (available on every screen except during a match), or start the app with `?scenario=<id>`. **Restore the initial state:** the **"Reset mock data"** button (clears stored matches and the pending queue and selects *Success*). Console API: `window.__pirateMock.setScenario('<id>')`, `.getScenario()`, `.reset()`.
 
-The **Network scenario** panel (available outside a match) can be used
-to simulate conditions such as empty results, slow responses, timeouts,
-connection failures, HTTP 4xx/5xx responses, and match-save timeouts.
-This helps exercise the UI's loading, error, retry, and recovery states
-without relying on a real server.
+| Id | Reproduces |
+|---|---|
+| `success` | Everything works (150 ms latency) |
+| `empty` | Empty ranking and history |
+| `multi-page` | Many pages in both lists |
+| `slow` | Every response takes ~2.5 s |
+| `variable-latency` | Seeded random latency (100 – 3000 ms) |
+| `out-of-order` | Alternate responses take 2 s, so older ones arrive after newer ones |
+| `timeout` | Requests never answer (client gives up after 5 s) |
+| `network-error` | Dropped connection |
+| `http-4xx` | Every request answers 403 |
+| `http-5xx` | Every request answers 500 |
+| `ranking-fails` / `history-fails` | Only that query answers 500 |
+| `save-timeout` | The match is stored, but the answer never arrives (retry must not duplicate it) |
+| `save-unavailable` | Saving answers 503 until you switch back to `success` |
 
-Unsent match records are queued in `localStorage` and retried after
-failures or when the browser comes back online. Match IDs are used to
-avoid creating duplicate records during retries.
+**Reproduce "unavailable at the end of the match":** choose `save-unavailable`, finish a match: the result screen shows *Not saved yet*. Start another match (it is never blocked), then switch to `success`: the pending record is sent once and appears in both tabs. Refreshing with a pending record also re-sends it on start.
 
-## Available scripts
+## Tests
 
-Run these commands from the project root:
-
-  -----------------------------------------------------------------------
-  Command                             Purpose
-  ----------------------------------- -----------------------------------
-  `npm run dev`                       Start the Vite development server.
-
-  `npm run build`                     Run TypeScript project checks and
-                                      create the production build in
-                                      `dist/`.
-
-  `npm run lint`                      Run Oxlint.
-
-  `npm run preview`                   Serve the production build locally
-                                      (run `npm run build` first).
-  -----------------------------------------------------------------------
-
-### Testing note
-
-The supplied project contains a Playwright configuration that targets
-`tests/e2e` and starts a production preview for browser tests. However,
-the source archive used to prepare this documentation did not contain
-E2E test files, and `package.json` does not currently define a `test`
-script. Do not assume browser tests have passed just because Playwright
-reports or a configuration file exists.
-
-Before submitting, run at least:
-
-``` bash
-npm run build
-npm run lint
+```bash
+npx playwright install chromium
+npm run test:e2e            # builds, serves the optimized build, runs desktop + mobile
+npm run test:e2e:report     # HTML report; failed tests keep a trace in test-results/
 ```
 
-If E2E tests are required, confirm that the `tests/e2e` test files are
-present and add an appropriate script, for example
-`"test:e2e": "playwright test"`, before running `npm run test:e2e`.
+77 tests run on desktop (Chromium 1280×720) and 81 on mobile (Pixel 7, landscape, real multi-touch through CDP). They cover options, asset loading and failure, movement, rotation, arena limits and islands, front and broadside shots, damage, cooldowns, score, Chaser and Shooter behaviour, spawn interval, end by time and by death, clean restart, pause and focus loss, result persistence, abandoning a match, ranking and history (pagination, loading, empty, error), saving, pending records, timeouts without duplication and late responses. Three visual baselines (menu, arena, result) are versioned in `e2e/__screenshots__`.
+
+Tests press real keys and touch real buttons. A small hook (`?e2e=1`, [`src/game/testHooks.ts`](src/game/testHooks.ts)) only **observes state and drives the clock** in exact fixed steps, so rules, input, collisions and rendering run unchanged. Each test starts from an isolated browser context (empty storage). Reference the baselines with `npm run test:e2e:update` after an intentional visual change.
+
+### Performance
+
+```bash
+npm run test:perf     # builds, serves the optimized build on :4174, runs one 3-minute session and 5 game cycles
+```
+
+Measures FPS, the 95th percentile of the time between frames and the number of entities over a full 3-minute match (worst-case configuration: 180 s, an enemy every 0.5 s), and the JS heap, DOM nodes and event listeners after 5 consecutive matches, with garbage collection forced before each reading. Method, thresholds, results and manual profiling steps: [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Raw reports: [docs/reports/performance](docs/reports/performance).
 
 ## Project structure
 
-``` text
+```
 src/
-├── api/                  # API client, contracts, React Query hooks, match recorder
-├── game/                 # Gameplay configuration, simulation, session, input, renderer
-│   ├── input/            # Keyboard input and merged input sources
-│   └── render/           # PixiJS renderer and texture loading
-├── mocks/                # MSW handlers, fixtures, scenarios, mock database
-├── storage/              # Options and result persistence
-├── ui/                   # Shared UI, dialogs, forms, touch controls
-│   └── screens/          # Main menu, game, options, results, ranking/history
-├── App.tsx               # Top-level screen navigation
-├── main.tsx              # App bootstrap, MSW startup, providers, recovery
-└── index.css             # Global styles
-
-public/
-├── assets/               # Game sprites, effects, UI art, and brand logo
-└── mockServiceWorker.js  # MSW browser service worker
+  game/          pure rules (Simulation, config, math, types) + GameSession, input/, render/
+  api/           contracts, Axios client, TanStack Query hooks, match recorder
+  mocks/         MSW handlers, fixtures, scenarios, local "database", self-healing guard
+  storage/       typed localStorage access (options, last result)
+  ui/            React screens (menu, options, game, result, log), dialogs, touch controls
+public/          assets (ships, tiles, UI, effects), mockServiceWorker.js
+e2e/             Playwright tests, helpers and visual baselines
+perf/            Performance tests (3-minute session, memory cycles), probe and statistics helpers
+docs/            PERFORMANCE.md and generated reports
 ```
 
-For details about runtime responsibilities and data flow, see
-[ARCHITECTURE.md](./ARCHITECTURE.md).
+## Assets and licenses
 
-## Build for production
+All art (ships, tiles, effects, UI sprites, logo) comes from the challenge's `assets/` folder and is used as provided: no conversion and no extra resources were added. The pack ships no license file, so check its terms with the challenge owner before reusing it elsewhere. The sound files in `assets/sounds/` are not used yet (see limitations). Code dependencies and their licenses are those listed in `package.json`.
 
-``` bash
-npm run build
-npm run preview
-```
+## Known limitations
 
-Vite prints the local preview URL. The current mock API is part of the
-browser app, so a production deployment of this prototype still uses
-mock data unless a real backend and API integration are added.
-
-## License and assets
-
-No project license is declared in the supplied `package.json`. Before
-redistributing this project or its art assets publicly, add an
-appropriate license and verify that the included assets are licensed for
-your intended use.
+See [ARCHITECTURE.md](ARCHITECTURE.md#limitations-and-trade-offs).

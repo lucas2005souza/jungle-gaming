@@ -5,12 +5,7 @@ const RETRY_HEADER = 'x-mock-retry';
 
 const wasMocked = (response: Pick<AxiosResponse, 'headers'>): boolean => AxiosHeaders.from(response.headers as AxiosHeaders).has(MOCK_HEADER);
 
-/**
- * Self-healing for the mock layer. If an API response did not come from MSW, `heal()`
- * re-activates the worker and the request is repeated exactly once (marked by a header, so
- * it can never loop). Real errors produced by the handlers carry the header and pass through.
- * Returns a function that removes the guard.
- */
+
 export function installBypassGuard(client: AxiosInstance, heal: () => Promise<void>): () => void {
   async function retryOnce(config: InternalAxiosRequestConfig): Promise<AxiosResponse | null> {
     if (config.headers.has(RETRY_HEADER)) return null;

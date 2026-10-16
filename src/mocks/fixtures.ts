@@ -1,7 +1,6 @@
 import type { EndReason, MatchConfig, MatchRecord } from '../api/contracts';
 import { PLAYER_ID, PLAYER_NAME } from '../player';
 
-/** Same as the game's default options, so a fresh install has a populated ranking. */
 const DEFAULT_CFG: MatchConfig = { durationSec: 90, spawnIntervalSec: 2.5 };
 
 type Row = [name: string, score: number, playedAt: string, reason: EndReason, durationSec: number];
@@ -40,7 +39,6 @@ const LONG: Row[] = [
   ['Sea Wolf', 19, '2026-09-08T18:24:00.000Z', 'time_up', 120],
 ];
 
-/** Static fixtures: other captains only. The local player's matches come from POST /matches. */
 export const FIXTURES: MatchRecord[] = [
   ...MAIN.map((r, i) => row(`fx-main-${i}`, DEFAULT_CFG, r)),
   ...SHORT.map((r, i) => row(`fx-short-${i}`, SHORT_CFG, r)),
@@ -52,7 +50,6 @@ const LAST = ['Pete', 'Hook', 'Morgan', 'Mary', 'Rose', 'Beard', 'Kate', 'Bill']
 const BASE_TIME = Date.UTC(2026, 8, 3, 12, 0, 0);
 const HOUR = 3_600_000;
 
-/** "Many pages" scenario: deterministic extra data (no randomness involved). */
 export const EXTRA_FIXTURES: MatchRecord[] = [
   ...Array.from({ length: 40 }, (_, i): MatchRecord => {
     const name = `${FIRST[i % 8]} ${LAST[(i * 3 + 1) % 8]}`;

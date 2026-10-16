@@ -4,6 +4,7 @@ export const SCENARIOS = [
   { id: 'multi-page', label: 'Many pages', description: 'Adds extra fixtures so both lists span several pages.' },
   { id: 'slow', label: 'Slow network', description: 'Every response takes about 2.5 seconds.' },
   { id: 'variable-latency', label: 'Variable latency', description: 'Seeded random delays, so responses arrive out of order.' },
+  { id: 'out-of-order', label: 'Out-of-order replies', description: 'Every other response takes 2 s, so a newer request is answered before an older one.' },
   { id: 'timeout', label: 'Timeout (all)', description: 'No request is ever answered; the client gives up after 5 s.' },
   { id: 'network-error', label: 'Connection failure', description: 'Every request fails like a dropped connection.' },
   { id: 'http-4xx', label: 'HTTP 4xx', description: 'Every request answers 403.' },
@@ -73,6 +74,7 @@ const latencyOverride = latencyParam !== null && Number.isFinite(Number(latencyP
 
 let current: ScenarioId = readInitial();
 let rng = makeRng(RNG_SEED);
+let outOfOrderCount = 0;
 const listeners = new Set<() => void>();
 
 export const getScenario = (): ScenarioId => current;
@@ -84,6 +86,7 @@ export const subscribeScenario = (l: () => void): (() => void) => {
 export function setScenario(id: ScenarioId): void {
   current = id;
   rng = makeRng(RNG_SEED);
+  outOfOrderCount = 0;
   try {
     globalThis.localStorage?.setItem(STORAGE_KEY, id);
   } catch {
@@ -101,6 +104,9 @@ export function planFor(route: Route): Plan {
       break;
     case 'variable-latency':
       plan = { delayMs: 100 + Math.floor(rng() * 2900), outcome: ok };
+      break;
+    case 'out-of-order':
+      plan = { delayMs: outOfOrderCount++ % 2 === 1 ? 2000 : 100, outcome: ok };
       break;
     case 'timeout':
       return { delayMs: 0, outcome: { kind: 'hang' } };

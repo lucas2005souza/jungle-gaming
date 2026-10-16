@@ -11,13 +11,11 @@ export const REASON_LABEL = {
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const two = (n: number) => String(n).padStart(2, '0');
 
-/** mm:ss with leading zeros, as shown in the Captain's Log ("02:00"). */
 export function formatClock(totalSec: number): string {
   const s = Math.max(0, Math.round(totalSec));
   return `${two(Math.floor(s / 60))}:${two(s % 60)}`;
 }
 
-/** "08 SEP" + "19:36" in local time; locale independent so the label never changes between machines. */
 export function formatLogDate(iso: string): { day: string; time: string } {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { day: '--', time: '--:--' };

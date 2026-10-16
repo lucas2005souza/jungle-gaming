@@ -2,10 +2,7 @@ import type { HistoryPage, MatchConfig, MatchRecord, Page, RankingPage } from '.
 import { EXTRA_FIXTURES, FIXTURES } from './fixtures';
 import { getScenario } from './scenarios';
 
-/**
- * In-memory "server database". Only matches created through POST /matches are persisted
- * (localStorage), so confirmed records survive a refresh; fixtures are always rebuilt from code.
- */
+
 const DB_KEY = 'pirate-battle:mock-db:v1';
 
 const isStored = (v: unknown): v is MatchRecord =>
@@ -25,7 +22,6 @@ function saveStored(list: MatchRecord[]): void {
   try {
     globalThis.localStorage?.setItem(DB_KEY, JSON.stringify(list));
   } catch {
-    /* ignore */
   }
 }
 
@@ -33,11 +29,9 @@ export function resetDb(): void {
   try {
     globalThis.localStorage?.removeItem(DB_KEY);
   } catch {
-    /* ignore */
   }
 }
 
-/** Idempotent by id: a repeated POST returns the stored record and creates nothing. */
 export function insertRecord(record: MatchRecord): { record: MatchRecord; created: boolean } {
   const stored = loadStored();
   const existing = stored.find((r) => r.id === record.id);

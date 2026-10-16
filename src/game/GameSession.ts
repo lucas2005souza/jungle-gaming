@@ -1,6 +1,6 @@
 import { Application, type Ticker } from 'pixi.js';
 import type { GameConfig } from './config';
-import { Simulation } from './Simulation';
+import { FIXED_STEP, Simulation } from './Simulation';
 import { GameRenderer } from './render/GameRenderer';
 import type { GameTextures } from './render/assets';
 import { InputMux } from './input/InputMux';
@@ -40,6 +40,8 @@ export class GameSession {
   private readonly listeners = new Set<Listener>();
   private snapshot: SessionSnapshot;
   private destroyed = false;
+  /** Manual-clock mode: simulated time not yet shown by the renderer (water, effects). */
+  private visualDt = 0;
 
   constructor(app: Application, host: HTMLElement, config: GameConfig, textures: GameTextures, opts: SessionOptions = {}) {
     this.app = app;
@@ -99,6 +101,14 @@ export class GameSession {
     this.publish();
   }
 
+  /** Test instrumentation (manual clock): exactly one fixed simulation step. */
+  stepFixed(): void {
+    if (this.sim.status !== 'running') return;
+    this.sim.step(FIXED_STEP);
+    this.visualDt = Math.min(1, this.visualDt + FIXED_STEP);
+    this.publish();
+  }
+
   /** Deterministic stepping for tests (works with `manualClock`). */
   advanceBy(seconds: number): void {
     this.sim.advance(seconds);
@@ -126,7 +136,10 @@ export class GameSession {
     const dt = Math.min(ticker.deltaMS / 1000, 0.1);
     const running = this.sim.status === 'running';
     if (running && !this.manualClock) this.sim.advance(dt);
-    this.renderer.render(running ? dt : 0);
+    // Manual clock: visuals only advance with simulated time, so screenshots are reproducible.
+    const visualDt = this.manualClock ? this.visualDt : running ? dt : 0;
+    this.visualDt = 0;
+    this.renderer.render(visualDt);
     this.publish();
   };
 

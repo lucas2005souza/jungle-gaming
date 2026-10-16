@@ -4,7 +4,6 @@ import type { MatchResult } from '../game/types';
 const OPTIONS_KEY = 'pirate-battle:options:v1';
 const LAST_RESULT_KEY = 'pirate-battle:last-result:v1';
 
-/** A finished match as persisted locally. `matchId` is the idempotency key for the future API record. */
 export interface StoredMatchResult extends MatchResult {
   matchId: string;
   endedAt: string;
@@ -15,7 +14,7 @@ function read(key: string): unknown {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   } catch {
-    return null; // storage blocked or corrupted JSON: behave as "nothing saved"
+    return null;
   }
 }
 
@@ -57,11 +56,9 @@ export const loadLastResult = (): StoredMatchResult | null => parseStoredResult(
 
 export const saveLastResult = (r: StoredMatchResult): boolean => write(LAST_RESULT_KEY, r);
 
-// ---- legacy local history (before matches were sent to the API) ----
 const LEGACY_HISTORY_KEY = 'pirate-battle:history:v1';
 const LEGACY_MIGRATED_KEY = 'pirate-battle:legacy-migrated:v1';
 
-/** Matches saved by the older, local-only history. Corrupted entries are skipped. */
 export function loadLegacyHistory(): StoredMatchResult[] {
   const v = read(LEGACY_HISTORY_KEY);
   return Array.isArray(v) ? v.map(parseStoredResult).filter((r): r is StoredMatchResult => r !== null) : [];

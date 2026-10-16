@@ -3,7 +3,6 @@ import './dialogs.css';
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-/** Modal dialog: moves focus in, traps Tab, restores focus to the previous element on close. */
 export function Dialog({ label, children }: { label: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 

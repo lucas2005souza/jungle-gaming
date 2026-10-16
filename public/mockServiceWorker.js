@@ -1,5 +1,4 @@
-/* eslint-disable */
-/* tslint:disable */
+
 
 /**
  * Mock Service Worker.
@@ -120,8 +119,7 @@ addEventListener('message', function (event) {
 })
 
 addEventListener('fetch', function (event) {
-  // Opening the DevTools triggers the "only-if-cached" request
-  // that cannot be handled by the worker. Bypass such requests.
+
   if (
     event.request.cache === 'only-if-cached' &&
     event.request.mode !== 'same-origin'
@@ -129,9 +127,6 @@ addEventListener('fetch', function (event) {
     return
   }
 
-  // Bypass all requests when there are no active clients.
-  // Prevents the self-unregistered worked from handling requests
-  // after it's been terminated (still remains active until the next reload).
   if (activeClientIds.size === 0) {
     return
   }
@@ -168,9 +163,7 @@ async function handleRequest(event, requestId) {
   try {
     response = await responsePromise
   } catch (error) {
-    // The request has settled without a response (e.g. a passthrough
-    // request failed with a network error). Notify the client so it
-    // can release the resources associated with this request.
+
     if (client && activeClientIds.has(client.id)) {
       sendToClient(client, {
         type: 'REQUEST_ERROR',
@@ -186,23 +179,17 @@ async function handleRequest(event, requestId) {
     throw error
   }
 
-  // Send back the response clone for the "response:*" life-cycle events.
-  // Ensure MSW is active and ready to handle the message, otherwise
-  // this message will pend indefinitely.
+
   if (client && activeClientIds.has(client.id)) {
     const serializedRequest = await serializeRequest(requestCloneForEvents)
 
-    // Omit the body of server-sent event stream responses.
-    // Cloning such responses would prevent client-side stream cancelations
-    // from reaching the original stream (a teed stream only cancels its
-    // source once both of its branches cancel) and would buffer the
-    // entire stream into the unconsumed clone indefinitely.
+
     const isEventStreamResponse = response.headers
       .get('content-type')
       ?.toLowerCase()
       .startsWith('text/event-stream')
 
-    // Clone the response so both the client and the library could consume it.
+
     const responseClone = isEventStreamResponse ? null : response.clone()
 
     sendToClient(
@@ -234,10 +221,7 @@ async function handleRequest(event, requestId) {
 }
 
 /**
- * Resolve the main client for the given event.
- * Client that issues a request doesn't necessarily equal the client
- * that registered the worker. It's with the latter the worker should
- * communicate with during the response resolving phase.
+
  * @param {FetchEvent} event
  * @returns {Promise<Client | undefined>}
  */
@@ -258,12 +242,11 @@ async function resolveMainClient(event) {
 
   return allClients
     .filter((client) => {
-      // Get only those clients that are currently visible.
+ 
       return client.visibilityState === 'visible'
     })
     .find((client) => {
-      // Find the client ID that's recorded in the
-      // set of clients that have registered the worker.
+      
       return activeClientIds.has(client.id)
     })
 }
@@ -275,8 +258,7 @@ async function resolveMainClient(event) {
  * @returns {Promise<Response>}
  */
 async function getResponse(event, client, requestId) {
-  // Clone the request because it might've been already used
-  // (i.e. its body has been read and sent to the client).
+
   const requestClone = event.request.clone()
 
   /**
@@ -287,9 +269,7 @@ async function getResponse(event, client, requestId) {
     const requestHeaders = data?.request?.headers
 
     if (Array.isArray(requestHeaders)) {
-      // Apply the request headers provided by the client.
-      // Those reflect any modifications made in the request handlers.
-      // Use ".append()" to support multiple headers with the same name.
+     
       for (const [name, value] of requestHeaders) {
         headers.append(name, value)
       }
@@ -299,9 +279,6 @@ async function getResponse(event, client, requestId) {
       }
     }
 
-    // Remove the "accept" header value that marked this request as passthrough.
-    // This prevents request alteration and also keeps it compliant with the
-    // user-defined CORS policies.
     const acceptHeader = headers.get('accept')
     if (acceptHeader) {
       const values = acceptHeader.split(',').map((value) => value.trim())
@@ -324,15 +301,10 @@ async function getResponse(event, client, requestId) {
     return passthrough()
   }
 
-  // Bypass initial page load requests (i.e. static assets).
-  // The absence of the immediate/parent client in the map of the active clients
-  // means that MSW hasn't dispatched the "MOCK_ACTIVATE" event yet
-  // and is not ready to handle requests.
   if (!activeClientIds.has(client.id)) {
     return passthrough()
   }
 
-  // Notify the client that a request has been intercepted.
   const serializedRequest = await serializeRequest(event.request)
   const clientMessage = await sendToClient(
     client,
@@ -408,22 +380,12 @@ function sendToClient(client, message, transferrables = []) {
  * @returns {Promise<Response>}
  */
 async function respondWithMock(response, event) {
-  // Setting response status code to 0 is a no-op.
-  // However, when responding with a "Response.error()", the produced Response
-  // instance will have status code set to 0. Since it's not possible to create
-  // a Response instance with status code 0, handle that use-case separately.
   if (response.status === 0) {
     return Response.error()
   }
 
   let body = response.body
 
-  // Buffer the streamed mocked response body for navigation requests.
-  // The stream is transferred from the client that is being navigated
-  // away from. Once the navigation commits, that client gets destroyed
-  // and the stream will never complete, resulting in an empty document.
-  // Buffering here keeps "event.respondWith()" pending (the navigation
-  // cannot commit) until the entire body arrives from the client.
   if (event.request.mode === 'navigate' && body instanceof ReadableStream) {
     body = await new Response(body).arrayBuffer()
   }

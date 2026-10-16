@@ -85,10 +85,7 @@ progress { width: min(320px, 70vw); height: 16px; }
 @media (orientation: portrait) and (pointer: coarse) {
   .rotate-hint { display: flex; position: absolute; inset: 0; z-index: 30; align-items: center; justify-content: center; background: rgba(5,30,44,.95); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
 }
-/* ======================================================================
-   Pirate Battle theme: wooden 9-slice frames, gold / dark plank buttons.
-   Sprites come from the provided UI atlas (retina PNGs, 2x => slices doubled).
-   ====================================================================== */
+
 :root {
   --cream: #fff1c9;
   --coin: #ffd98a;

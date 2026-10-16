@@ -33,5 +33,4 @@
   .result-score { font-size: 48px; }
   .wood-title { font-size: 24px; }
   .opt-form { gap: 8px; }
-  .opt-hint { display: none; }
-}
+  .opt-hint:not([role]):not([role="alert"] *) { display: none; }}

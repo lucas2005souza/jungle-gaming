@@ -25,7 +25,6 @@ function HoldButton({ session, action, label, text, className }: {
   );
 }
 
-/** Each button owns its pointer, so movement and several weapons work simultaneously (multi-touch). */
 export function TouchControls({ session }: { session: GameSession }) {
   return (
     <div className="touch" aria-label="Touch controls">

@@ -4,10 +4,8 @@ import { insertRecord, queryHistory, queryRanking } from './db';
 import { planFor, type Route } from './scenarios';
 import { MOCK_HEADER } from './shared';
 
-/** JSON response tagged as coming from the mock layer (see MOCK_HEADER). */
 const json = (body: JsonBodyType, status = 200): Response => HttpResponse.json(body, { status, headers: { [MOCK_HEADER]: 'msw' } });
 
-/** Applies the active scenario (latency, failure, hang) around the real response. */
 async function respond(route: Route, ok: () => Response, saveEffect?: () => void): Promise<Response> {
   const { delayMs, outcome } = planFor(route);
   if (outcome.kind === 'hang') {
@@ -21,7 +19,7 @@ async function respond(route: Route, ok: () => Response, saveEffect?: () => void
     case 'status':
       return json({ message: `Mocked failure (${outcome.status})` }, outcome.status);
     case 'save-then-hang':
-      saveEffect?.(); // the "server" did store it, only the answer is lost
+      saveEffect?.(); 
       await delay('infinite');
       return ok();
     default:
@@ -50,9 +48,7 @@ function parseRecord(body: unknown): MatchRecord | null {
   return b as unknown as MatchRecord;
 }
 
-// '*/api/...' also matches when the app is served from a sub-path.
 export const handlers = [
-  // Not affected by scenarios: used to detect that the mock layer is alive.
   http.get('*/api/health', () => json({ ok: true })),
 
   http.get('*/api/ranking', ({ request }) => {

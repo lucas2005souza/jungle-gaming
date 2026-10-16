@@ -2,7 +2,6 @@ import { useSyncExternalStore } from 'react';
 import { changeScenario, resetMocks } from '../mocks/control';
 import { SCENARIOS, getScenario, isScenarioId, subscribeScenario } from '../mocks/scenarios';
 
-/** Picks the simulated network condition and restores the initial mock state. Never shown during a match. */
 export function MockPanel() {
   const scenario = useSyncExternalStore(subscribeScenario, getScenario);
   const current = SCENARIOS.find((s) => s.id === scenario);

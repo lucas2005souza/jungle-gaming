@@ -39,7 +39,6 @@ export class KeyboardInput {
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (PAUSE_KEYS.has(e.code)) {
-      // Typing in a form field (e.g. the Options inputs) must not toggle the pause.
       if (e.code === 'KeyP' && (e.target as HTMLElement | null)?.closest?.('input, select, textarea')) return;
       if (!e.repeat) this.onPauseKey();
       e.preventDefault();

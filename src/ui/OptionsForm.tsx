@@ -20,7 +20,6 @@ interface StepperProps {
   onChange: (v: string) => void;
 }
 
-/** [-] value s [+] : buttons clamp to the documented limits, typing is still validated. */
 function Stepper({ id, label, hint, value, min, max, step, error, autoFocus, onChange }: StepperProps) {
   const n = parse(value);
   const valid = Number.isFinite(n);

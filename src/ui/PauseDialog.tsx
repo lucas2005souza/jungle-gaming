@@ -12,10 +12,7 @@ interface Props {
   onOptionsSaved: (o: GameOptions) => void;
 }
 
-/**
- * Pause menu. Options open inside the dialog so the paused match is kept: edits only
- * apply to the next match (each match runs on a snapshot of the options taken at start).
- */
+
 export function PauseDialog({ session, options, onExit, onOptionsSaved }: Props) {
   const [view, setView] = useState<'menu' | 'options'>('menu');
 

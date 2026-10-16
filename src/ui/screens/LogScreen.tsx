@@ -28,8 +28,7 @@ interface Props {
 export function LogScreen({ initialTab, options, onBack }: Props) {
   const [tab, setTab] = useState<LogTab>(initialTab);
   const [page, setPage] = useState(0); // zero-based; reset when the tab or the leaderboard changes
-  // Which leaderboard the Ranking tab shows. Starts at the player's options; changing it
-  // only changes this view, never the options used to play.
+
   const [view, setView] = useState<GameOptions>(options);
   const tabRefs = useRef<Record<LogTab, HTMLButtonElement | null>>({ ranking: null, history: null });
   const titleRef = useRef<HTMLHeadingElement>(null);
