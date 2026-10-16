@@ -1,0 +1,27 @@
+name: Update visual snapshots
+# Manual run: Actions -> "Update visual snapshots" -> Run workflow.
+# Regenerates the baselines on the same Linux image the tests use, then commits them.
+on:
+  workflow_dispatch:
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    - run: npm ci
+    - run: npx playwright install --with-deps chromium
+    - name: Update snapshots
+      run: npx playwright test visual.spec.ts --project=desktop --update-snapshots --retries=0
+    - name: Commit new baselines
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add e2e/__screenshots__
+        git diff --staged --quiet || git commit -m "test: refresh visual baselines on Linux"
+        git push

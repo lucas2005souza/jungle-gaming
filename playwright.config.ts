@@ -17,7 +17,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 2 : 4,  timeout: 45_000,
+  workers: process.env.CI ? 2 : 4,
+  // CI runners (2 shared vCPUs) are ~2x slower than a dev machine: the longest tests sit right at 45 s there.
+  timeout: process.env.CI ? 90_000 : 45_000,
   expect: {
     timeout: 8_000,
     toHaveScreenshot: { maxDiffPixelRatio: 0.03, animations: 'disabled' },
