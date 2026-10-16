@@ -23,7 +23,7 @@ test.describe('Touch controls (mobile, landscape)', () => {
   test('touch buttons are visible, inside the screen and do not cut the arena or the HUD', async ({ app, page }) => {
     await app.startQuietMatch();
     const vp = page.viewportSize()!;
-    for (const name of ['Turn left', 'Sail forward', 'Turn right', 'Fire left side', 'Fire front', 'Fire right side']) {
+    for (const name of ['Turn left', 'Sail diagonally left', 'Sail forward', 'Sail diagonally right', 'Turn right', 'Fire left side', 'Fire front', 'Fire right side']) {
       const box = await page.getByRole('button', { name }).boundingBox();
       expect(box, name).not.toBeNull();
       expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -61,6 +61,25 @@ test.describe('Touch controls (mobile, landscape)', () => {
     s = await app.game.advance(0.5);
     await t.release();
     expect(s.player.heading).toBeCloseTo(0, 1);
+  });
+
+  test('diagonal buttons sail forward while turning to each side', async ({ app }) => {
+    const s0 = await app.startQuietMatch();
+    const t = await touches(app);
+    await t.press(['Sail diagonally right']);
+    const right = await app.game.advance(0.5);
+    await t.release();
+    expect(right.player.heading).toBeCloseTo(1.1, 1);
+    expect(right.player.x).toBeGreaterThan(s0.player.x + 20);
+    expect(right.player.y).toBeLessThan(s0.player.y - 20);
+
+    await t.press(['Sail diagonally left']);
+    const left = await app.game.advance(0.5);
+    await t.release();
+    expect(left.player.heading).toBeCloseTo(0, 1);
+    const stopped = await app.game.advance(0.5);
+    expect(stopped.player.x).toBeCloseTo(left.player.x, 1);
+    expect(stopped.player.y).toBeCloseTo(left.player.y, 1);
   });
 
   test('moving and firing at the same time (multi-touch)', async ({ app }) => {

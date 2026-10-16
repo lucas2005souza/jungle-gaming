@@ -16,7 +16,6 @@ h1, h2 { margin: 0 0 12px; line-height: 1.15; }
 h1:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* ---------- screens ---------- */
 .screen { min-height: 100dvh; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; gap: 16px; background: linear-gradient(rgba(5,30,44,.55), rgba(5,30,44,.8)), url('/assets/ui_scene_background.png') center / cover no-repeat; }
 .screen.center { justify-content: center; }
 .menu-head { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
@@ -28,7 +27,6 @@ h1:focus { outline: none; }
 .hint { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
 .error { color: var(--danger); font-size: 14px; margin: 6px 0 0; }
 
-/* ---------- controls ---------- */
 .btn { font: inherit; font-weight: 700; padding: 12px 26px; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: rgba(255,255,255,.1); color: var(--text); cursor: pointer; }
 .btn.primary { background: var(--gold); color: var(--gold-text); border-color: var(--gold); }
 .btn.ghost { background: transparent; }
@@ -58,7 +56,6 @@ table.controls thead th { color: var(--muted); font-weight: 600; }
 
 progress { width: min(320px, 70vw); height: 16px; }
 
-/* ---------- game ---------- */
 .game-screen { position: relative; width: 100%; height: 100dvh; overflow: hidden; background: #1b6f8f; touch-action: none; user-select: none; -webkit-user-select: none; }
 .host { position: absolute; inset: 0; }
 .hud { position: absolute; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); display: flex; gap: 10px; align-items: center; pointer-events: none; }
@@ -70,7 +67,6 @@ progress { width: min(320px, 70vw); height: 16px; }
 .overlay { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); padding: 16px; }
 .dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; min-width: min(360px, 100%); text-align: center; }
 
-/* touch controls: only on touch devices */
 .touch { display: none; }
 @media (pointer: coarse) {
   .touch { display: flex; position: absolute; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); justify-content: space-between; align-items: flex-end; pointer-events: none; z-index: 10; }
@@ -79,7 +75,15 @@ progress { width: min(320px, 70vw); height: 16px; }
   .tbtn:active { background: rgba(242,177,52,.7); }
   .t-fire { min-width: 84px; min-height: 84px; background: rgba(200,60,40,.65); }
   .t-fwd { min-width: 78px; min-height: 78px; }
+  .t-diag { font-size: 26px; }
   .help-desktop { display: none; }
+}
+@media (pointer: coarse) and (max-width: 720px) {
+  .touch-left, .touch-right { gap: 6px; }
+  .tbtn { min-width: 54px; min-height: 54px; font-size: 18px; }
+  .t-fire { min-width: 70px; min-height: 70px; }
+  .t-fwd { min-width: 64px; min-height: 64px; }
+  .t-diag { font-size: 22px; }
 }
 .rotate-hint { display: none; }
 @media (orientation: portrait) and (pointer: coarse) {
@@ -101,7 +105,6 @@ progress { width: min(320px, 70vw); height: 16px; }
 .menu-panel { max-width: 620px; padding: 0 clamp(8px, 3vw, 28px) 4px; gap: 12px; }
 .log-panel { max-width: 1140px; padding: 0 clamp(8px, 2vw, 24px) 4px; gap: 10px; }
 
-/* title + copy */
 .menu-title { margin: 0; line-height: 0; }
 .menu-title img { width: min(400px, 78%); height: auto; }
 .eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; color: #e9dcb8; text-align: center; }
@@ -115,7 +118,6 @@ progress { width: min(320px, 70vw); height: 16px; }
 .controls-details summary { cursor: pointer; text-align: center; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; padding: 6px; }
 .controls-details table.controls { margin-top: 6px; }
 
-/* plank buttons */
 .wood-btn { --bx: 38px; --by: 28px; box-sizing: border-box; border: solid transparent; border-width: var(--by) var(--bx); height: calc(var(--by) * 2 + 8px); padding: 0; margin: 0; background: none; display: inline-grid; place-items: center; white-space: nowrap; cursor: pointer; font: 800 21px/1 var(--ui-font); letter-spacing: .04em; text-transform: uppercase; }
 .wood-btn.big { min-width: min(264px, 72vw); }
 .wood-btn.small { --bx: 30px; --by: 21px; height: calc(var(--by) * 2 + 6px); min-width: 164px; font-size: 14px; }
@@ -133,7 +135,6 @@ progress { width: min(320px, 70vw); height: 16px; }
 .round-btn:active:not(:disabled) { background-image: url('/assets/png/retina/ui/controls/button_round_pressed.png'); }
 .round-btn:disabled { opacity: .45; cursor: default; filter: grayscale(.4); }
 
-/* Captain's Log */
 .log-title { margin: 0; font-size: clamp(26px, 4vw, 34px); font-weight: 900; text-transform: uppercase; color: var(--cream); letter-spacing: .02em; text-shadow: 0 2px 0 #6a3f10, 0 0 3px #2b1805, 2px 2px 0 #2b1805, -2px 2px 0 #2b1805; }
 .log-tabs { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .log-sub { margin: 4px 0 6px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #cfd9e3; }
@@ -161,7 +162,6 @@ progress { width: min(320px, 70vw); height: 16px; }
   .log-table-wrap { min-height: 0; }
 }
 
-/* ---------- Captain's Log: data states, ranking extras ---------- */
 .log-table.ranking th:nth-child(1) { width: 14%; }
 .log-table.ranking th:nth-child(2) { width: 46%; }
 .log-table.ranking th:nth-child(3) { width: 14%; }
@@ -172,14 +172,12 @@ progress { width: min(320px, 70vw); height: 16px; }
 .error-box p { margin: 0; }
 .refreshing { color: var(--coin); }
 
-/* ---------- Network scenario panel ---------- */
 .mock-panel { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 40; max-width: min(300px, calc(100vw - 20px)); padding: 6px 10px; border-radius: 10px; background: rgba(5, 20, 32, .88); border: 1px solid var(--line); font-size: 13px; color: var(--text); }
 .mock-panel summary { cursor: pointer; font-weight: 700; }
 .mock-panel label { display: block; margin: 8px 0 4px; font-weight: 700; }
 .mock-panel select { width: 100%; font: inherit; padding: 6px 8px; min-height: 36px; border-radius: 6px; border: 1px solid var(--line); background: rgba(0, 0, 0, .4); color: var(--text); }
 .mock-panel .btn { margin-top: 6px; }
 
-/* ---------- Ranking: leaderboard configuration filters ---------- */
 .log-filters { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; align-items: flex-end; margin: 2px 0 4px; }
 .log-filters label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #a9b7c6; }
 .log-filters select { font: 700 13px var(--ui-font); letter-spacing: 0; text-transform: none; min-height: 34px; min-width: 96px; padding: 4px 10px; color: var(--cream); background: rgba(12, 24, 38, .9); border: 1px solid rgba(255, 217, 138, .45); border-radius: 8px; cursor: pointer; }
