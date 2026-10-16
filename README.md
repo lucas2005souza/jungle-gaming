@@ -59,7 +59,7 @@ The app needs **none** to build or run. Optional switches:
 |---|---|---|
 | `E2E_DEV=1` | Playwright | Test the dev server (`:5173`) instead of building and previewing |
 | `E2E_BASE_URL=https://...` | Playwright | Test an already running or deployed URL (no local server is started) |
-| `CI=1` | Playwright | 2 workers, 1 retry, `forbidOnly` |
+| `CI=1` | Playwright | 2 workers, 2 retries, 90 s test timeout (instead of 45 s), `forbidOnly` |
 | `PERF_MIN_FPS` | `test:perf` | Minimum average FPS (default 55) |
 | `PERF_MAX_P95_MS` | `test:perf` | Maximum p95 time between frames in ms (default 20) |
 | `PERF_MAX_HEAP_GROWTH_MB` | `test:perf` | Maximum JS heap growth between cycle 1 and 5 (default 5) |
@@ -80,12 +80,13 @@ Runtime query-string parameters (they work in dev, preview and the published bui
 | Action | Keyboard | Touch |
 |---|---|---|
 | Sail forward | `W` / `↑` | ▲ |
+| Sail diagonally (forward while turning left / right) | `W` + `A` / `W` + `D` | ↖ ↗ |
 | Rotate left / right | `A` `D` / `←` `→` | ◄ ► |
 | Fire front (1 projectile) | `Space` | ● |
 | Broadside left / right (3 parallel projectiles) | `Q` / `E` | ◄● / ●► |
 | Pause / resume | `P` / `Esc` | Pause button |
 
-You can sail, rotate and fire at the same time (multi-touch on phones). Touch controls appear on touch devices. **Phones: play in landscape**; in portrait the match pauses and asks you to rotate. The match also pauses when the window loses focus or the tab is hidden; resuming always needs a player action.
+You can sail, rotate and fire at the same time (multi-touch on phones). The diagonal buttons hold "forward" and a turn together, so one thumb can steer an arc. Touch controls appear on touch devices. **Phones: play in landscape**; in portrait the match pauses and asks you to rotate. The match also pauses when the window loses focus or the tab is hidden; resuming always needs a player action.
 
 ## Gameplay configuration
 
@@ -132,9 +133,9 @@ npm run test:e2e            # builds, serves the optimized build, runs desktop +
 npm run test:e2e:report     # HTML report; failed tests keep a trace in test-results/
 ```
 
-77 tests run on desktop (Chromium 1280×720) and 81 on mobile (Pixel 7, landscape, real multi-touch through CDP). They cover options, asset loading and failure, movement, rotation, arena limits and islands, front and broadside shots, damage, cooldowns, score, Chaser and Shooter behaviour, spawn interval, end by time and by death, clean restart, pause and focus loss, result persistence, abandoning a match, ranking and history (pagination, loading, empty, error), saving, pending records, timeouts without duplication and late responses. Three visual baselines (menu, arena, result) are versioned in `e2e/__screenshots__`.
+77 tests run on desktop (Chromium 1280×720) and 82 on mobile (Pixel 7, landscape, real multi-touch through CDP). They cover options, asset loading and failure, movement, rotation, arena limits and islands, front and broadside shots, damage, cooldowns, score, Chaser and Shooter behaviour, spawn interval, end by time and by death, clean restart, pause and focus loss, result persistence, abandoning a match, ranking and history (pagination, loading, empty, error), saving, pending records, timeouts without duplication and late responses, and the touch buttons (including the diagonals). Three visual baselines (menu, arena, result) are versioned in `e2e/__screenshots__`.
 
-Tests press real keys and touch real buttons. A small hook (`?e2e=1`, [`src/game/testHooks.ts`](src/game/testHooks.ts)) only **observes state and drives the clock** in exact fixed steps, so rules, input, collisions and rendering run unchanged. Each test starts from an isolated browser context (empty storage). Reference the baselines with `npm run test:e2e:update` after an intentional visual change.
+Tests press real keys and touch real buttons. A small hook (`?e2e=1`, [`src/game/testHooks.ts`](src/game/testHooks.ts)) only **observes state and drives the clock** in exact fixed steps, so rules, input, collisions and rendering run unchanged. Each test starts from an isolated browser context (empty storage). Refresh the baselines with `npm run test:e2e:update` after an intentional visual change. The result-screen baseline also shows the frozen battle behind the panel, so it must be refreshed after any change to enemy behaviour.
 
 ### Performance
 
@@ -172,7 +173,7 @@ The app is a static site (Vite build), so it needs no server. It is deployed on 
 The ranking and history API is simulated by MSW (service worker `public/mockServiceWorker.js`), which also runs in the published build, so no backend is required. To run the E2E suite against the deployed site:
 
 ```bash
-E2E_BASE_URL=https://SEU-PROJETO.vercel.app npm run test:e2e
+E2E_BASE_URL=https://jungle-gaming-one.vercel.app npm run test:e2e
 ```
 
 ## Assets and licenses
