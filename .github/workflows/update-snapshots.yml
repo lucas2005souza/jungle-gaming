@@ -1,11 +1,10 @@
 name: Update visual snapshots
-# Manual run: Actions -> "Update visual snapshots" -> Run workflow.
-# Regenerates the baselines on the same Linux image the tests use, then commits them.
+
 on:
   workflow_dispatch:
 jobs:
   update:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: write
