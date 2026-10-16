@@ -228,12 +228,16 @@ export class Simulation {
       }
       let desired = headingTo(tx, ty);
       desired = this.avoidIslands(e, desired, stats.speed);
+      // A shooter that has stopped at keepDistance must aim straight at the player. Otherwise the
+      // separation / island-avoidance bend keeps its heading outside aimToleranceRad and it never fires.
+      const holding = e.kind === 'shooter' && dist <= this.config.shooter.keepDistance;
+      if (holding) desired = headingTo(dx, dy);
       e.heading = turnToward(e.heading, desired, stats.turnRate * dt);
 
       let advance = true;
       if (e.kind === 'shooter') {
         const sh = this.config.shooter;
-        advance = dist > sh.keepDistance;
+        advance = !holding;
         const aimErr = Math.abs(normalizeAngle(headingTo(dx, dy) - e.heading));
         if (dist <= sh.attackRange && aimErr <= sh.aimToleranceRad && e.cooldowns.front <= 0) {
           e.cooldowns.front = sh.weapon.cooldown;
