@@ -2,6 +2,7 @@
 
 A 2D top-down naval shooter built with **React**, **TypeScript** and **PixiJS**. Sail between islands, fight Chaser and Shooter ships and score as many points as you can before the clock runs out or your hull is destroyed.
 
+- **Live demo:** https://SEU-PROJETO.vercel.app
 - **Architecture notes:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Test and performance reports:** [docs/reports](docs/reports) and [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 
@@ -156,6 +157,22 @@ public/          assets (ships, tiles, UI, effects), mockServiceWorker.js
 e2e/             Playwright tests, helpers and visual baselines
 perf/            Performance tests (3-minute session, memory cycles), probe and statistics helpers
 docs/            PERFORMANCE.md and generated reports
+```
+
+## Deployment
+
+The app is a static site (Vite build), so it needs no server. It is deployed on **Vercel**:
+
+1. Push the repository to GitHub.
+2. In Vercel choose **Add New → Project** and import the repository.
+3. Keep the detected settings: preset **Vite**, build command `npm run build`, output directory `dist`, no environment variables.
+4. Use **Node.js 22.x** (Settings → General → Node.js Version).
+5. Click **Deploy**. Every push to `main` publishes a new production build; other branches and pull requests get preview URLs.
+
+The ranking and history API is simulated by MSW (service worker `public/mockServiceWorker.js`), which also runs in the published build, so no backend is required. To run the E2E suite against the deployed site:
+
+```bash
+E2E_BASE_URL=https://SEU-PROJETO.vercel.app npm run test:e2e
 ```
 
 ## Assets and licenses
