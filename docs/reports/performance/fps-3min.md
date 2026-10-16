@@ -5,11 +5,12 @@ keys held for the whole run: KeyW, KeyD, Space, KeyQ, KeyE. Measured with reques
 
 | Item | Value |
 |---|---|
-| Date | 2026-10-16T03:46:50.641Z |
+| Date | 2026-10-16T03:55:29.959Z |
 | Target | production build (vite build + vite preview) |
-| Browser | Chromium 156.0.8078.4 (headless) |
+| Browser | Chromium 156.0.8078.4 (headless, new mode) |
 | OS | win32 10.0.26200 |
 | CPU | AMD Ryzen 7 5800X 8-Core Processor (16 threads) |
+| WebGL renderer | ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11) |
 | RAM | 16 GB |
 | Node | v24.22.0 |
 
@@ -17,29 +18,29 @@ keys held for the whole run: KeyW, KeyD, Space, KeyQ, KeyE. Measured with reques
 
 | Metric | Value |
 |---|---|
-| Average FPS | 24.1 |
-| Worst second (FPS) | 16 |
-| 1 % low FPS (1000 / p99) | 15.0 |
-| Time between frames, mean | 41.49 ms |
-| Time between frames, median (p50) | 33.40 ms |
-| **Time between frames, p95** | **66.70 ms** |
-| Time between frames, p99 | 66.70 ms |
-| Time between frames, max | 83.40 ms |
-| Frames above 25 ms / above 50 ms | 4291 / 677 (of 4291) |
-| Main-thread tasks above 50 ms | 686 (longest 76 ms) |
+| Average FPS | 300.0 |
+| Worst second (FPS) | 299 |
+| 1 % low FPS (1000 / p99) | 294.1 |
+| Time between frames, mean | 3.33 ms |
+| Time between frames, median (p50) | 3.30 ms |
+| **Time between frames, p95** | **3.40 ms** |
+| Time between frames, p99 | 3.40 ms |
+| Time between frames, max | 6.70 ms |
+| Frames above 25 ms / above 50 ms | 0 / 0 (of 53367) |
+| Main-thread tasks above 50 ms | 0 |
 
-Whole run, warm-up included: average 24.1 FPS, p95 66.70 ms, max 83.40 ms (4340 frames, 180 s).
+Whole run, warm-up included: average 300.0 FPS, p95 3.40 ms, max 6.70 ms (53968 frames, 180 s).
 
 ## Entities (sampled once per second)
 
 | Entities | Min | Mean | p95 | Max |
 |---|---|---|---|---|
-| Total (player + enemies + projectiles) | 7 | 17.4 | 23 | 24 |
+| Total (player + enemies + projectiles) | 8 | 16.9 | 22 | 24 |
 | Enemies | 2 | 11.6 | 12 | 12 |
-| Projectiles | 0 | 4.8 | 10 | 11 |
+| Projectiles | 0 | 4.3 | 9 | 11 |
 
-Mean total entities in the first third of the run: 17.4; in the last third: 17.0 (they must not keep growing).
+Mean total entities in the first third of the run: 16.8; in the last third: 16.7 (they must not keep growing).
 
 ## JS heap during the run (not garbage-collected before reading: it normally looks like a saw)
 
-Start 12.7 MB, end 13.8 MB, minimum 11.5 MB, maximum 16.0 MB.
+Start 13.0 MB, end 12.5 MB, minimum 11.1 MB, maximum 16.1 MB.

@@ -1,0 +1,76 @@
+{
+  "environment": {
+    "date": "2026-10-16T03:57:21.148Z",
+    "browser": "Chromium 156.0.8078.4 (headless, new mode)",
+    "os": "win32 10.0.26200",
+    "cpu": "AMD Ryzen 7 5800X 8-Core Processor",
+    "cores": 16,
+    "ramGB": 16,
+    "node": "v24.22.0",
+    "target": "production build (vite build + vite preview)",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "softwareRendering": false
+  },
+  "limits": {
+    "minAvgFps": 55,
+    "maxP95FrameMs": 20,
+    "maxHeapGrowthMB": 5,
+    "maxListenerGrowth": 5,
+    "maxNodeGrowth": 100
+  },
+  "points": [
+    {
+      "label": "Baseline (menu, before any match)",
+      "ending": "none",
+      "heapMB": 4.691043853759766,
+      "nodes": 259,
+      "listeners": 184,
+      "documents": 2
+    },
+    {
+      "label": "After cycle 1",
+      "ending": "death",
+      "heapMB": 7.86737060546875,
+      "nodes": 266,
+      "listeners": 214,
+      "documents": 2
+    },
+    {
+      "label": "After cycle 2",
+      "ending": "menu",
+      "heapMB": 8.242168426513672,
+      "nodes": 325,
+      "listeners": 218,
+      "documents": 2
+    },
+    {
+      "label": "After cycle 3",
+      "ending": "death",
+      "heapMB": 8.321514129638672,
+      "nodes": 266,
+      "listeners": 214,
+      "documents": 2
+    },
+    {
+      "label": "After cycle 4",
+      "ending": "menu",
+      "heapMB": 8.536785125732422,
+      "nodes": 325,
+      "listeners": 218,
+      "documents": 2
+    },
+    {
+      "label": "After cycle 5",
+      "ending": "death",
+      "heapMB": 8.605819702148438,
+      "nodes": 266,
+      "listeners": 214,
+      "documents": 2
+    }
+  ],
+  "growth": {
+    "heapMB": 0.7384490966796875,
+    "nodes": 0,
+    "listeners": 0
+  }
+}

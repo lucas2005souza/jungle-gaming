@@ -216,13 +216,13 @@ export interface Fixtures {
 
 export const test = base.extend<Fixtures>({
   strictConsole: [true, { option: true }],
-  app: async ({ page, strictConsole }, use) => {
+  app: async ({ page, strictConsole }, provide) => {
     const problems: string[] = [];
     page.on('pageerror', e => problems.push(`pageerror: ${e.message}`));
     page.on('console', m => {
       if (m.type() === 'error' && !isExpectedApiFailure(m)) problems.push(`console.error: ${m.text()}`);
     });
-    await use(new App(page));
+    await provide(new App(page));
     if (strictConsole) expect(problems, 'no unhandled console errors during the flow').toEqual([]);
   },
 });

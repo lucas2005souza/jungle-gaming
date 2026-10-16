@@ -67,7 +67,7 @@ test('3 min session: FPS, p95 time between frames and entities', async ({ app, p
   const trend = thirds(cap.seconds.map(s => s.entities));
   const heap = cap.seconds.map(s => s.heapMB).filter((v): v is number => v !== null);
   const longTasks = distribution(cap.longTasksMs);
-  const env = readEnvironment(page);
+  const env = await readEnvironment(page);
 
   const md = [
     '# Performance: 3-minute session',
@@ -200,7 +200,7 @@ test('memory after 5 game cycles', async ({ app, page, context }, testInfo) => {
   const c1 = points[1];
   const c5 = points[CYCLES];
   const growth = { heapMB: c5.heapMB - c1.heapMB, nodes: c5.nodes - c1.nodes, listeners: c5.listeners - c1.listeners };
-  const env = readEnvironment(page);
+  const env = await readEnvironment(page);
 
   const rows = points.map(p => {
     const d = p.heapMB - c1.heapMB;
