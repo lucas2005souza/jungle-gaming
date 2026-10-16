@@ -45,7 +45,7 @@ No private services are required: the ranking and history API is simulated in th
 | `npm run typecheck:e2e` | Type-checks the Playwright tests |
 | `npm run test:e2e` | Whole E2E suite (desktop + mobile), against the optimized build |
 | `npm run test:e2e:desktop` / `test:e2e:mobile` | One Playwright project only |
-| `npm run test:e2e:update` | Creates or refreshes the visual baselines (desktop) |
+| `npm run test:e2e:update` | Refreshes the visual baselines. Only run it on Linux (or use the GitHub workflow, see Tests) |
 | `npm run test:e2e:report` | Opens the last HTML report |
 | `npm run typecheck:perf` | Type-checks the performance tests |
 | `npm run test:perf` | Performance and profiling: 3-minute FPS / p95 frame time / entities session and memory after 5 game cycles (optimized build, real clock) |
@@ -135,7 +135,7 @@ npm run test:e2e:report     # HTML report; failed tests keep a trace in test-res
 
 77 tests run on desktop (Chromium 1280×720) and 82 on mobile (Pixel 7, landscape, real multi-touch through CDP). They cover options, asset loading and failure, movement, rotation, arena limits and islands, front and broadside shots, damage, cooldowns, score, Chaser and Shooter behaviour, spawn interval, end by time and by death, clean restart, pause and focus loss, result persistence, abandoning a match, ranking and history (pagination, loading, empty, error), saving, pending records, timeouts without duplication and late responses, and the touch buttons (including the diagonals). Three visual baselines (menu, arena, result) are versioned in `e2e/__screenshots__`.
 
-Tests press real keys and touch real buttons. A small hook (`?e2e=1`, [`src/game/testHooks.ts`](src/game/testHooks.ts)) only **observes state and drives the clock** in exact fixed steps, so rules, input, collisions and rendering run unchanged. Each test starts from an isolated browser context (empty storage). Refresh the baselines with `npm run test:e2e:update` after an intentional visual change. The result-screen baseline also shows the frozen battle behind the panel, so it must be refreshed after any change to enemy behaviour.
+Tests press real keys and touch real buttons. A small hook (`?e2e=1`, [`src/game/testHooks.ts`](src/game/testHooks.ts)) only **observes state and drives the clock** in exact fixed steps, so rules, input, collisions and rendering run unchanged. Each test starts from an isolated browser context (empty storage). The visual baselines are generated on **Linux** (the same environment as the CI), because fonts render differently on Windows and macOS; on other systems the three visual tests are skipped automatically. After an intentional visual change, refresh them with the **"Update visual snapshots"** workflow (GitHub → Actions → Run workflow) and then `git pull`; on Linux you can also run `npm run test:e2e:update`. The result-screen baseline also shows the frozen battle behind the panel, so it must be refreshed after any change to enemy behaviour.
 
 ### Performance
 

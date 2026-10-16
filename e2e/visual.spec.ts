@@ -2,10 +2,14 @@ import { expect, test } from './fixtures';
 
 /**
  * Visual regression (desktop only). Baselines are committed under e2e/__screenshots__.
- * Create / refresh them with:  npm run test:e2e:update
+ * They are generated on Linux (same as CI), because fonts render differently on Windows and macOS.
+ * Refresh them with the "Update visual snapshots" workflow on GitHub (Actions tab), not on your own machine.
+ * On other operating systems these tests are skipped, so a local run does not fail on font differences.
  * The arena is captured in a manual-clock match, so water and ships are exactly where the test put them.
  */
 test.describe('Visual regression', () => {
+  test.skip(process.platform !== 'linux', 'Visual baselines are generated on Linux (see the comment above).');
+
   test('main menu', async ({ app, page }) => {
     await app.open({ e2e: false });
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
