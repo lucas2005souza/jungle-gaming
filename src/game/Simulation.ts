@@ -13,10 +13,7 @@ const MAX_STEPS_PER_FRAME = 5;
 
 export type EventListener = (e: GameEvent) => void;
 
-/**
- * Pure game rules. No PixiJS, no React, no DOM, no wall-clock.
- * Time only advances through `advance()` / `step()`, so pause is exact and tests are deterministic.
- */
+
 export class Simulation {
   readonly config: GameConfig;
   readonly player: Ship;
@@ -27,7 +24,6 @@ export class Simulation {
   status: MatchStatus = 'running';
   endReason: EndReason | null = null;
   score = 0;
-  /** active (unpaused) simulated seconds */
   elapsed = 0;
 
   private rng: () => number;
@@ -45,14 +41,12 @@ export class Simulation {
     this.player = this.makeShip('player', width * 0.2, height * 0.8, 0, config.player.ship);
   }
 
-  // ---- public API ---------------------------------------------------------
 
   on(l: EventListener): () => void {
     this.listeners.add(l);
     return () => this.listeners.delete(l);
   }
 
-  /** Feed real frame time (seconds). Runs 0..N fixed steps; frame-rate independent. */
   advance(frameDt: number): void {
     if (this.status !== 'running') return;
     this.accumulator += clamp(frameDt, 0, 0.25);
@@ -69,7 +63,6 @@ export class Simulation {
     if (this.status === 'running') this.status = 'paused';
   }
 
-  /** Resume discards buffered time and held keys so nothing from the paused period is replayed. */
   resume(): void {
     if (this.status !== 'paused') return;
     this.accumulator = 0;
@@ -97,7 +90,6 @@ export class Simulation {
     };
   }
 
-  /** One deterministic fixed step. */
   step(dt: number): void {
     if (this.status !== 'running') return;
     this.elapsed += dt;
@@ -110,7 +102,6 @@ export class Simulation {
     this.checkEnd();
   }
 
-  // ---- ships ----------------------------------------------------------------
 
   private makeShip(kind: ShipKind, x: number, y: number, heading: number, s: ShipStats): Ship {
     return {
@@ -176,7 +167,6 @@ export class Simulation {
     }
   }
 
-  /** Three parallel projectiles, spaced along the hull. side: -1 = port, +1 = starboard. */
   private fireBroadside(p: Ship, side: -1 | 1): void {
     const w = this.config.player.side;
     const dir = p.heading + side * (Math.PI / 2);
@@ -202,7 +192,6 @@ export class Simulation {
     });
   }
 
-  // ---- enemies --------------------------------------------------------------
 
   private updateEnemies(dt: number): void {
     const p = this.player;
@@ -226,20 +215,26 @@ export class Simulation {
           ty += (oy / od) * w;
         }
       }
-      let desired = headingTo(tx, ty);
-      desired = this.avoidIslands(e, desired, stats.speed);
-      // A shooter that has stopped at keepDistance must aim straight at the player. Otherwise the
-      // separation / island-avoidance bend keeps its heading outside aimToleranceRad and it never fires.
-      const holding = e.kind === 'shooter' && dist <= this.config.shooter.keepDistance;
-      if (holding) desired = headingTo(dx, dy);
+
+      const sh = this.config.shooter;
+      const clearLine = e.kind === 'shooter' && !this.pathBlocked(e.x, e.y, p.x, p.y, e.radius);
+      const engaged = clearLine && dist <= sh.attackRange;
+      const holding = engaged && dist <= sh.keepDistance;
+
+      let desired: number;
+      if (engaged) {
+        desired = headingTo(dx, dy);
+        e.avoidSide = 0;
+      } else {
+        desired = this.avoidIslands(e, headingTo(tx, ty), stats.speed);
+      }
       e.heading = turnToward(e.heading, desired, stats.turnRate * dt);
 
-      let advance = true;
+      const advance = !holding;
       if (e.kind === 'shooter') {
-        const sh = this.config.shooter;
-        advance = !holding;
         const aimErr = Math.abs(normalizeAngle(headingTo(dx, dy) - e.heading));
-        if (dist <= sh.attackRange && aimErr <= sh.aimToleranceRad && e.cooldowns.front <= 0) {
+        if (dist <= sh.attackRange && aimErr <= sh.aimToleranceRad && e.cooldowns.front <= 0
+          && !this.pathBlocked(e.x, e.y, e.x + forwardX(e.heading) * dist, e.y + forwardY(e.heading) * dist, sh.weapon.projectileRadius)) {
           e.cooldowns.front = sh.weapon.cooldown;
           this.fireProjectile(e, 'enemy', sh.weapon, e.heading, 0, e.radius);
           this.emit({ type: 'shot', weapon: 'front', shipId: e.id, x: e.x, y: e.y, heading: e.heading });
@@ -253,7 +248,10 @@ export class Simulation {
     this.separateEnemies();
   }
 
-  /** Hard positional separation so hulls never stack, even when steering is not enough. */
+  private pathBlocked(x0: number, y0: number, x1: number, y1: number, r: number): boolean {
+    return this.config.islands.some(i => segmentHitsCircle(x0, y0, x1, y1, r, i));
+  }
+
   private separateEnemies(): void {
     const list = this.enemies;
     for (let i = 0; i < list.length; i++) {
@@ -275,11 +273,7 @@ export class Simulation {
     }
   }
 
-  /**
-   * Island avoidance: when the straight route to the target would graze an island, steer along the
-   * tangent. The side is chosen once and kept (avoidSide) until the way is clear, so ships commit to
-   * one detour instead of flip-flopping and hugging the shore.
-   */
+  
   private avoidIslands(e: Ship, desired: number, speed: number): number {
     const look = speed * 1.1 + e.radius + 40;
     const fx = forwardX(desired), fy = forwardY(desired);
@@ -299,7 +293,6 @@ export class Simulation {
     return desired;
   }
 
-  // ---- projectiles & collisions ---------------------------------------------
 
   private updateProjectiles(dt: number): void {
     const { width, height } = this.config.arena;
@@ -359,7 +352,6 @@ export class Simulation {
     }
   }
 
-  // ---- spawning ---------------------------------------------------------------
 
   private updateSpawns(dt: number): void {
     this.spawnTimer -= dt;
@@ -397,10 +389,8 @@ export class Simulation {
       this.emit({ type: 'enemySpawned', shipId: ship.id, kind });
       return;
     }
-    // No valid spot this tick: skip; the next interval retries (never spawn unsafely).
   }
 
-  // ---- housekeeping -------------------------------------------------------------
 
   private compactDead(): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) if (!this.enemies[i].alive) this.enemies.splice(i, 1);
@@ -424,7 +414,6 @@ export class Simulation {
     this.listeners.forEach(l => l(e));
   }
 
-  /** Release references; called on unmount/restart. */
   dispose(): void {
     this.listeners.clear();
     this.enemies.length = 0;
