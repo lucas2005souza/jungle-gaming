@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createConfig, type GameOptions } from '../../game/config';
 import { loadGameTextures, type GameTextures } from '../../game/render/assets';
@@ -10,6 +11,14 @@ import { PauseDialog } from '../PauseDialog';
 import '../dialogs.css';
 import { TouchControls } from '../TouchControls';
 import { REASON_LABEL, formatTime } from '../format';
+
+function generateMatchId(): string {
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 interface Props {
   options: GameOptions;
@@ -54,6 +63,7 @@ export function GameScreen({ options, onExit, onFinished, onOptionsSaved }: Prop
       </main>
     );
   }
+
   if (!textures) {
     return (
       <main className="scene">
@@ -65,7 +75,16 @@ export function GameScreen({ options, onExit, onFinished, onOptionsSaved }: Prop
       </main>
     );
   }
-  return <Match textures={textures} options={options} onExit={onExit} onFinished={onFinished} onOptionsSaved={onOptionsSaved} />;
+
+  return (
+    <Match
+      textures={textures}
+      options={options}
+      onExit={onExit}
+      onFinished={onFinished}
+      onOptionsSaved={onOptionsSaved}
+    />
+  );
 }
 
 function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props & { textures: GameTextures }) {
@@ -80,16 +99,27 @@ function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+
     let alive = true;
     let removeHooks: (() => void) | undefined;
-    const mounted = mountGameSession(host, config, textures, e2e.enabled ? { manualClock: e2e.manualClock } : undefined);
+
+    const mounted = mountGameSession(
+      host,
+      config,
+      textures,
+      e2e.enabled ? { manualClock: e2e.manualClock } : undefined
+    );
+
     mounted.ready
       .then(s => {
         if (!alive || !s) return;
         if (e2e.enabled) removeHooks = installTestHooks(s);
         setSession(s);
       })
-      .catch(e => { if (alive) setError(e instanceof Error ? e.message : String(e)); });
+      .catch(e => {
+        if (alive) setError(e instanceof Error ? e.message : String(e));
+      });
+
     return () => {
       alive = false;
       removeHooks?.();
@@ -101,8 +131,10 @@ function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props 
   // Portrait phones: pause instead of squeezing the arena.
   useEffect(() => {
     if (!session) return;
+
     const mq = window.matchMedia('(orientation: portrait) and (pointer: coarse)');
     const onChange = () => { if (mq.matches) session.pause(); };
+
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, [session]);
@@ -110,7 +142,17 @@ function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props 
   return (
     <main className="game-screen">
       <div className="host" ref={hostRef} aria-label="Game arena" role="img" />
-      {session && <MatchOverlay session={session} options={options} onExit={onExit} onFinished={onFinished} onOptionsSaved={onOptionsSaved} />}
+
+      {session && (
+        <MatchOverlay
+          session={session}
+          options={options}
+          onExit={onExit}
+          onFinished={onFinished}
+          onOptionsSaved={onOptionsSaved}
+        />
+      )}
+
       {error && (
         <Dialog label="Game error">
           <h2 className="wood-title">Could not start the match</h2>
@@ -118,6 +160,7 @@ function Match({ textures, options, onExit, onFinished, onOptionsSaved }: Props 
           <button className="wood-btn primary big" onClick={onExit}>Main Menu</button>
         </Dialog>
       )}
+
       <div className="rotate-hint" aria-hidden="true">Rotate your device to landscape</div>
     </main>
   );
@@ -131,32 +174,51 @@ function MatchOverlay({ session, options, onExit, onFinished, onOptionsSaved }: 
   // Match finished: persist once, then show the result after a short beat so the last explosion is seen.
   useEffect(() => {
     if (s.status !== 'ended') return;
+
     if (!storedRef.current) {
       const r = session.getResult();
       if (!r) return;
-      storedRef.current = { ...r, matchId: crypto.randomUUID(), endedAt: new Date().toISOString() };
+
+      storedRef.current = {
+        ...r,
+        matchId: generateMatchId(),
+        endedAt: new Date().toISOString()
+      };
+
       saveLastResult(storedRef.current);
       submitMatch(toMatchRecord(storedRef.current));
     }
+
     const stored = storedRef.current;
     const t = window.setTimeout(() => onFinished(stored), 1300);
+
     return () => window.clearTimeout(t);
   }, [s.status, session, onFinished]);
 
   // Screen-reader announcements: state changes only, never per frame.
   useEffect(() => {
     if (s.status === 'paused') setAnnouncement('Game paused');
-    else if (s.status === 'ended') setAnnouncement(`${REASON_LABEL[s.reason ?? 'time_up']}. Final score ${s.score}.`);
-    else setAnnouncement('');
+    else if (s.status === 'ended') {
+      setAnnouncement(`${REASON_LABEL[s.reason ?? 'time_up']}. Final score ${s.score}.`);
+    } else {
+      setAnnouncement('');
+    }
   }, [s.status, s.reason, s.score]);
+
   useEffect(() => {
-    if (s.status === 'running' && (s.timeLeftSec === 30 || s.timeLeftSec === 10)) setAnnouncement(`${s.timeLeftSec} seconds left`);
+    if (s.status === 'running' && (s.timeLeftSec === 30 || s.timeLeftSec === 10)) {
+      setAnnouncement(`${s.timeLeftSec} seconds left`);
+    }
   }, [s.status, s.timeLeftSec]);
+
   useEffect(() => {
-    if (s.status === 'running' && s.score > 0) setAnnouncement(`Score ${s.score}`);
+    if (s.status === 'running' && s.score > 0) {
+      setAnnouncement(`Score ${s.score}`);
+    }
   }, [s.score, s.status]);
 
   const hpPct = Math.round((s.hp / s.maxHp) * 100);
+
   return (
     <>
       <div className="hud" role="group" aria-label="Match status">
@@ -164,9 +226,13 @@ function MatchOverlay({ session, options, onExit, onFinished, onOptionsSaved }: 
         <span className="chip">Time <strong>{formatTime(s.timeLeftSec)}</strong></span>
         <span className="chip">
           Hull <strong>{s.hp}</strong>/{s.maxHp}
-          <span className="hp-track" aria-hidden="true"><span className="hp-fill" style={{ width: `${hpPct}%` }} /></span>
+          <span className="hp-track" aria-hidden="true">
+            <span className="hp-fill" style={{ width: `${hpPct}%` }} />
+          </span>
         </span>
-        <button className="btn small" onClick={() => session.pause()} disabled={s.status !== 'running'}>Pause</button>
+        <button className="btn small" onClick={() => session.pause()} disabled={s.status !== 'running'}>
+          Pause
+        </button>
       </div>
 
       <TouchControls session={session} />
@@ -174,7 +240,12 @@ function MatchOverlay({ session, options, onExit, onFinished, onOptionsSaved }: 
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
 
       {s.status === 'paused' && (
-        <PauseDialog session={session} options={options} onExit={onExit} onOptionsSaved={onOptionsSaved} />
+        <PauseDialog
+          session={session}
+          options={options}
+          onExit={onExit}
+          onOptionsSaved={onOptionsSaved}
+        />
       )}
     </>
   );
